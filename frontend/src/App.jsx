@@ -15,13 +15,13 @@ import { useThemeStore } from "./store/useThemeStore.js";
 
 const App = () => {
   const { isLoading, authUser } = useAuthUser();
-  const {theme} = useThemeStore()
+  const { theme } = useThemeStore();
 
   const isAutheticanted = Boolean(authUser);
   const isOnBoarded = authUser?.isOnBoarded;
 
   if (isLoading) return <PageLoader />;
- 
+
   return (
     <div className="h-screen " data-theme={theme}>
       <Routes>
@@ -60,16 +60,36 @@ const App = () => {
         <Route
           path="/notifications"
           element={
-            isAutheticanted ? <NotificationsPage /> : <Navigate to="/login" />
+            isAutheticanted && isOnBoarded ? (
+              <Layout showSidebar={true}>
+                <NotificationsPage />
+              </Layout>
+            ) : (
+              <Navigate to={!isAutheticanted ? "/login" : "/onboarding"} />
+            )
           }
         />
         <Route
-          path="/call"
-          element={isAutheticanted ? <CallPage /> : <Navigate to="/login" />}
+          path="/call/:id"
+          element={
+            isAutheticanted && isOnBoarded ? (
+              <CallPage />
+            ) : (
+              <Navigate to={!isAutheticanted ? "/login" : "/onboarding"} />
+            )
+          }
         />
         <Route
-          path="/chat"
-          element={isAutheticanted ? <ChatPage /> : <Navigate to="/login" />}
+          path="/chat/:id"
+          element={
+            isAutheticanted && isOnBoarded ? (
+              <Layout showSidebar={false}>
+                <ChatPage />
+              </Layout>
+            ) : (
+              <Navigate to={!isAutheticanted ? "/login" : "/onboarding"} />
+            )
+          }
         />
         <Route
           path="/onboarding"

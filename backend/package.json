@@ -1,9 +1,10 @@
 {
   "name": "backend",
   "version": "1.0.0",
-"main": "src/server.js",
+  "main": "src/server.js",
   "scripts": {
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js"
   },
   "keywords": [],
   "author": "",
@@ -18,6 +19,7 @@
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.13.2",
+    "sociahub": "file:..",
     "stream-chat": "^8.60.0"
   },
   "devDependencies": {
