@@ -9,13 +9,13 @@ const Navbar = () => {
   const location = useLocation();
   const isChatPage = location.pathname?.startsWith("/chat");
 
-//   const queryClient = useQueryClient();
-//   const { mutate: logoutMutation } = useMutation({
-//     mutationFn: logout,
-//     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["authUser"] }),
-//   });
+  //   const queryClient = useQueryClient();
+  //   const { mutate: logoutMutation } = useMutation({
+  //     mutationFn: logout,
+  //     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["authUser"] }),
+  //   });
 
-  const {logoutMutation} = useLogout();
+  const { logoutMutation } = useLogout();
 
   return (
     <nav className="bg-base-200 border-b border-base-300 sticky top-0 z-30 h-16 flex items-center">
@@ -44,20 +44,15 @@ const Navbar = () => {
           {/* TODO */}
           <ThemeSelector />
 
-          <div className="avatar">
+          <Link to="/profile" className="avatar cursor-pointer">
             <div className="w-9 rounded-full">
-              <img
-                src={authUser?.profilePic}
-                alt="User Avatar"
-                rel="noreferrer"
-              />
+              <img src={authUser?.profilePic} alt="User Avatar" />
             </div>
-          </div>
+          </Link>
 
           <button className="btn btn-ghost btn-circle" onClick={logoutMutation}>
-            <LogOutIcon className="h-6 w-6 text-base-content opacity-70"/>
+            <LogOutIcon className="h-6 w-6 text-base-content opacity-70" />
           </button>
-
         </div>
       </div>
     </nav>

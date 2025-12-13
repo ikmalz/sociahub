@@ -28,8 +28,8 @@ export async function signup(req, res) {
         .json({ message: "Email already exists, please use a different one" });
     }
 
-    const idx = Math.floor(Math.random() * 100) + 1; // generate a num between 1-100
-    const randomAvatar = `https://avatar.iran.liara.run/public/${idx}.png`;
+    const seed = Math.random().toString(36).substring(7);
+    const randomAvatar = `https://api.dicebear.com/7.x/adventurer/png?seed=${seed}`;
 
     const newUser = await User.create({
       email,
@@ -59,8 +59,8 @@ export async function signup(req, res) {
 
     res.cookie("jwt", token, {
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      httpOnly: true, // prevent XSS attacks,
-      sameSite: "strict", // prevent CSRF attacks
+      httpOnly: true,
+      sameSite: "strict",
       secure: process.env.NODE_ENV === "production",
     });
 
@@ -81,7 +81,7 @@ export async function login(req, res) {
 
     const user = await User.findOne({ email });
     if (!user)
-      return res.status(401).json({ message: "Invalid email or email" });
+      return res.status(401).json({ message: "Invalid email or password" });
 
     const isPasswordCorrect = await user.matchPassword(password);
     if (!isPasswordCorrect)
@@ -93,8 +93,8 @@ export async function login(req, res) {
 
     res.cookie("jwt", token, {
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      httpOnly: true, // prevent XSS attacks,
-      sameSite: "strict", // prevent CSRF attacks
+      httpOnly: true,
+      sameSite: "strict",
       secure: process.env.NODE_ENV === "production",
     });
 
@@ -110,37 +110,57 @@ export function logout(req, res) {
   res.status(200).json({ success: true, message: "Logout successfull" });
 }
 
-export async function onboard(req, res) {
+export const completeOnboarding = async (req, res) => {
   try {
-    const userId = req.user._id;
+    const userId = req.user.id;
+    const {
+      fullName,
+      email,
+      phoneNumber,
+      department,
+      position,
+      bio,
+      location,
+      profilePic,
+      expertise,
+      skills,
+    } = req.body;
 
-    const { fullName, bio, nativeLanguange, learningLanguange, location } =
-      req.body;
-
-    if (!fullName || !bio || !nativeLanguange || !location) {
-      return res.status(400).json({
-        message: "All fields are required",
-        missingFields: [
-          !fullName && "fullName",
-          !bio && "bio",
-          !nativeLanguange && "nativeLanguange",
-          !learningLanguange && "learningLanguange",
-          !location && "location",
-        ].filter(Boolean),
-      });
+    if (!fullName) {
+      return res.status(400).json({ message: "Full name is required" });
+    }
+    if (!department) {
+      return res.status(400).json({ message: "Department is required" });
+    }
+    if (!position) {
+      return res.status(400).json({ message: "Position is required" });
     }
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       {
-        ...req.body,
-        isOnBoarded: true,
+        $set: {
+          fullName,
+          email: email || req.user.email,
+          phoneNumber,
+          department,
+          position,
+          bio,
+          location,
+          profilePic,
+          expertise,
+          skills: skills || [],
+          isOnBoarded: true,
+        },
       },
-      { new: true }
-    );
+      { new: true, runValidators: true }
+    ).select("-password");
 
-    if (!updatedUser) return res.json(404).json({ message: "User not found" });
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
+    // Update Stream user
     try {
       await upsertStreamUser({
         id: updatedUser._id.toString(),
@@ -156,9 +176,93 @@ export async function onboard(req, res) {
         streamError.message
       );
     }
-    res.status(200).json({ success: true, user: updatedUser });
+
+    res.status(200).json({
+      message: "Onboarding completed successfully",
+      user: updatedUser,
+    });
   } catch (error) {
-    console.error("Onboarding error:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    console.error("Error in completeOnboarding:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+export const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const {
+      fullName,
+      email,
+      phoneNumber,
+      department,
+      position,
+      bio,
+      location,
+      profilePic,
+      expertise,
+      skills,
+    } = req.body;
+
+    if (!fullName) {
+      return res.status(400).json({ message: "Full name is required" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        $set: {
+          fullName,
+          email: email || req.user.email,
+          phoneNumber,
+          department,
+          position,
+          bio,
+          location,
+          profilePic,
+          expertise,
+          skills: skills || [],
+        },
+      },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Update Stream user jika nama atau foto berubah
+    if (fullName !== req.user.fullName || profilePic !== req.user.profilePic) {
+      try {
+        await upsertStreamUser({
+          id: updatedUser._id.toString(),
+          name: updatedUser.fullName,
+          image: updatedUser.profilePic || "",
+        });
+        console.log(`Stream user updated for ${updatedUser.fullName}`);
+      } catch (streamError) {
+        console.log("Error updating Stream user", streamError.message);
+      }
+    }
+
+    res.status(200).json({
+      message: "Profile updated successfully",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+export async function getMe(req, res) {
+  try {
+    const user = await User.findById(req.user.id).select("-password");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.status(200).json({ success: true, user });
+  } catch (error) {
+    console.error("Error in getMe:", error);
+    res.status(500).json({ message: "Server error" });
   }
 }

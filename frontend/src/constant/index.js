@@ -162,36 +162,119 @@
   },
 ];
 
-export const LANGUAGES = [
-  "English",
-  "Spanish",
-  "French",
-  "German",
-  "Mandarin",
-  "Japanese",
-  "Korean",
-  "Hindi",
-  "Russian",
-  "Portuguese",
-  "Arabic",
-  "Italian",
-  "Turkish",
-  "Dutch",
+// export const LANGUAGES = [
+//   "English",
+//   "Spanish",
+//   "French",
+//   "German",
+//   "Mandarin",
+//   "Japanese",
+//   "Korean",
+//   "Hindi",
+//   "Russian",
+//   "Portuguese",
+//   "Arabic",
+//   "Italian",
+//   "Turkish",
+//   "Dutch",
+// ];
+
+// export const LANGUAGE_TO_FLAG = {
+//   english: "gb",
+//   spanish: "es",
+//   french: "fr",
+//   german: "de",
+//   mandarin: "cn",
+//   japanese: "jp",
+//   korean: "kr",
+//   hindi: "in",
+//   russian: "ru",
+//   portuguese: "pt",
+//   arabic: "sa",
+//   italian: "it",
+//   turkish: "tr",
+//   dutch: "nl",
+// };
+
+export const DEPARTMENTS = [
+  "Human Resources",
+  "Finance",
+  "Marketing",
+  "Sales",
+  "IT",
+  "Operations",
+  "Customer Service",
+  "R&D",
+  "Procurement",
+  "Logistics",
+  "Administration",
+  "Legal",
+  "Executive"
 ];
 
-export const LANGUAGE_TO_FLAG = {
-  english: "gb",
-  spanish: "es",
-  french: "fr",
-  german: "de",
-  mandarin: "cn",
-  japanese: "jp",
-  korean: "kr",
-  hindi: "in",
-  russian: "ru",
-  portuguese: "pt",
-  arabic: "sa",
-  italian: "it",
-  turkish: "tr",
-  dutch: "nl",
+export const POSITIONS = [
+  "Staff",
+  "Senior Staff",
+  "Supervisor",
+  "Manager",
+  "Senior Manager",
+  "General Manager",
+  "Director",
+  "VP",
+  "CEO"
+];
+
+export const COMPANY_INFO = {
+  name: "Ciptadra softIndo",
+  logo: "/ip.png",
+  departments: [...DEPARTMENTS], 
+  positions: [...POSITIONS], 
+};
+
+export const COMPANY_DEPARTMENTS = [
+  "Executive",
+  "Human Resources",
+  "Finance & Accounting",
+  "Marketing",
+  "Sales",
+  "IT & Technology",
+  "Operations",
+  "Customer Service",
+  "Research & Development",
+  "Procurement",
+  "Logistics & Supply Chain",
+  "Legal",
+  "Administration",
+  "Quality Assurance",
+  "Business Development",
+  "Product Management",
+  "Engineering"
+];
+
+export const COMPANY_POSITIONS = [
+  "Intern",
+  "Junior Staff",
+  "Staff",
+  "Senior Staff",
+  "Team Lead",
+  "Supervisor",
+  "Assistant Manager",
+  "Manager",
+  "Senior Manager",
+  "General Manager",
+  "Director",
+  "Senior Director",
+  "Vice President",
+  "Senior Vice President",
+  "Executive Vice President",
+  "Chief Officer",
+  "CEO"
+];
+
+export default {
+  DEPARTMENTS,
+  POSITIONS,
+  COMPANY_DEPARTMENTS,
+  COMPANY_POSITIONS,
+  COMPANY_INFO
 };

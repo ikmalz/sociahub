@@ -12,6 +12,7 @@ import OnBoardingPage from "./pages/OnboardingPage.jsx";
 import useAuthUser from "./hooks/useAuthUser.js";
 import Layout from "./components/Layout.jsx";
 import { useThemeStore } from "./store/useThemeStore.js";
+import FriendsPage from "./pages/FriendsPage.jsx";
 
 const App = () => {
   const { isLoading, authUser } = useAuthUser();
@@ -102,6 +103,32 @@ const App = () => {
               )
             ) : (
               <Navigate to="/login" />
+            )
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            isAutheticanted ? (
+              <Layout showSidebar={true}>
+                <OnBoardingPage profileMode={true} />
+              </Layout>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+
+        <Route
+          path="/friends"
+          element={
+            isAutheticanted && isOnBoarded ? (
+              <Layout showSidebar={true}>
+                <FriendsPage />
+              </Layout>
+            ) : (
+              <Navigate to={!isAutheticanted ? "/login" : "/onboarding"} />
             )
           }
         />

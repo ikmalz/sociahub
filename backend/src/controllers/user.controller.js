@@ -8,9 +8,9 @@ export async function getRecommendedUsers(req, res) {
 
     const recommendedUsers = await User.find({
       $and: [
-        { _id: { $ne: currentUserId } },               // exclude current user
-        { _id: { $nin: currentUser.friends } },        // exclude friends
-        { isOnBoarded: true },                         // FIXED: field name correct
+        { _id: { $ne: currentUserId } },
+        { _id: { $nin: currentUser.friends } },
+        { isOnBoarded: true },
       ],
     });
 
@@ -21,17 +21,16 @@ export async function getRecommendedUsers(req, res) {
   }
 }
 
-
 export async function getMyFriends(req, res) {
   try {
     const user = await User.findById(req.user.id)
       .select("friends")
-      .populate(
-        "friends",
-        "fullName profilePic nativeLanguange learningLanguange"
-      );
+      .populate({
+        path: "friends",
+        select: "fullName profilePic department position email phoneNumber location bio expertise skills isOnBoarded nativeLanguange learningLanguange createdAt", // HAPUS employeeId
+      });
 
-    res.status(200).json(user.friends);
+    res.status(200).json(user.friends || []);
   } catch (error) {
     console.error("Error in getMyFriends controller", error.message);
     res.status(500).json({ message: "Internal Server Error" });

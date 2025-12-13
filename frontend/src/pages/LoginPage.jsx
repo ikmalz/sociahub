@@ -23,7 +23,7 @@ const LoginPage = () => {
   //   onSuccess: () => queryClient.invalidateQueries({ queryKey: ["authUser"] }),
   // });
 
-  const {isPending, error, loginMutation} = useLogin()
+  const { isPending, error, loginMutation } = useLogin();
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -48,7 +48,10 @@ const LoginPage = () => {
           {/* ERROR MESSAGE DISPLAY */}
           {error && (
             <div className="alert alert-error mb-4">
-              <span>{error.response.data.message}</span>
+              <span>
+                {error.response?.data?.message ||
+                  "Login failed. Server unreachable."}
+              </span>
             </div>
           )}
 
@@ -143,7 +146,8 @@ const LoginPage = () => {
                 Connect with languange partners worldwide
               </h2>
               <p className="opacity-70">
-                Prctice conversation, make friends, and improve your languange skills together
+                Prctice conversation, make friends, and improve your languange
+                skills together
               </p>
             </div>
           </div>
