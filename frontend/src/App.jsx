@@ -1,3 +1,4 @@
+// App.jsx - sudah benar seperti yang Anda berikan
 import React, { useState } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import HomePage from "./pages/HomePage.jsx";
@@ -6,6 +7,7 @@ import LoginPage from "./pages/LoginPage.jsx";
 import NotificationsPage from "./pages/NotificationsPage.jsx";
 import CallPage from "./pages/CallPage.jsx";
 import ChatPage from "./pages/ChatPage.jsx";
+import PostsPage from "./pages/PostsPage.jsx"; // Pastikan import ini benar
 import { Toaster } from "react-hot-toast";
 import PageLoader from "./components/PageLoader.jsx";
 import OnBoardingPage from "./pages/OnboardingPage.jsx";
@@ -13,6 +15,8 @@ import useAuthUser from "./hooks/useAuthUser.js";
 import Layout from "./components/Layout.jsx";
 import { useThemeStore } from "./store/useThemeStore.js";
 import FriendsPage from "./pages/FriendsPage.jsx";
+import PostDetailPage from "./pages/PostDetailPage.jsx";
+import PostDetailLayout from "./components/PostDetailLayout.jsx";
 
 const App = () => {
   const { isLoading, authUser } = useAuthUser();
@@ -106,7 +110,6 @@ const App = () => {
             )
           }
         />
-
         <Route
           path="/profile"
           element={
@@ -119,13 +122,38 @@ const App = () => {
             )
           }
         />
-
         <Route
           path="/friends"
           element={
             isAutheticanted && isOnBoarded ? (
               <Layout showSidebar={true}>
                 <FriendsPage />
+              </Layout>
+            ) : (
+              <Navigate to={!isAutheticanted ? "/login" : "/onboarding"} />
+            )
+          }
+        />
+        <Route
+          path="/post/:postId"
+          element={
+            isAutheticanted && isOnBoarded ? (
+              <PostDetailLayout>
+                <PostDetailPage />
+              </PostDetailLayout>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
+        />
+
+        {/* ROUTE UNTUK VIEW ALL POSTS */}
+        <Route
+          path="/posts"
+          element={
+            isAutheticanted && isOnBoarded ? (
+              <Layout showSidebar={true}>
+                <PostsPage />
               </Layout>
             ) : (
               <Navigate to={!isAutheticanted ? "/login" : "/onboarding"} />

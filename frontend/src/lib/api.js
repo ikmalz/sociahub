@@ -1,3 +1,4 @@
+// lib/api.js
 import { axiosInstance } from "./axios";
 
 export const signup = async (signupData) => {
@@ -100,8 +101,13 @@ export async function createPost(postData) {
 }
 
 export async function getPostById(id) {
-  const res = await axiosInstance.get(`/posts/${id}`);
-  return res.data;
+  try {
+    const res = await axiosInstance.get(`/posts/${id}`);
+    return res.data;
+  } catch (error) {
+    console.error("getPostById error:", error);
+    throw error;
+  }
 }
 
 export async function deletePost(id) {
@@ -227,3 +233,12 @@ export const updateProfile = async (userData) => {
   const response = await axiosInstance.put("/auth/update-profile", userData);
   return response.data;
 };
+
+// HAPUS YANG INI KARENA SUDAH ADA DI ATAS
+// export const getPostById = async (postId) => {
+//   const response = await fetch(`${API_BASE}/api/posts/${postId}`, {
+//     credentials: "include",
+//   });
+//   if (!response.ok) throw new Error("Failed to fetch post");
+//   return response.json();
+// };
