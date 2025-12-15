@@ -17,6 +17,7 @@ import { useThemeStore } from "./store/useThemeStore.js";
 import FriendsPage from "./pages/FriendsPage.jsx";
 import PostDetailPage from "./pages/PostDetailPage.jsx";
 import PostDetailLayout from "./components/PostDetailLayout.jsx";
+import MyPostsPage from "./pages/MyPostsPage.jsx";
 
 const App = () => {
   const { isLoading, authUser } = useAuthUser();
@@ -154,6 +155,19 @@ const App = () => {
             isAutheticanted && isOnBoarded ? (
               <Layout showSidebar={true}>
                 <PostsPage />
+              </Layout>
+            ) : (
+              <Navigate to={!isAutheticanted ? "/login" : "/onboarding"} />
+            )
+          }
+        />
+
+        <Route
+          path="/my-posts"
+          element={
+            isAutheticanted && isOnBoarded ? (
+              <Layout showSidebar={true}>
+                <MyPostsPage />
               </Layout>
             ) : (
               <Navigate to={!isAutheticanted ? "/login" : "/onboarding"} />

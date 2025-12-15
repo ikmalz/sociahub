@@ -3,9 +3,10 @@ import React from "react";
 const NoFriendsFound = () => {
   return (
     <div className="card bg-base-200 border border-base-content/20 rounded-xl p-6 text-center">
-      <h3 className="font-semibold text-lg mb-2">No friends yet</h3>
-      <p className="text-base-content opacity-70">
-        Connect with languange partners below to start practicing together!
+      <h3 className="font-semibold text-xs mb-2">No connections found</h3>
+      <p className="text-xs opacity-70">
+        You havent connected with anyone yet. Find colleagues below to get
+        started.
       </p>
     </div>
   );

@@ -31,29 +31,29 @@ import StoryCreateModal from "../components/StoryCreateModal";
 import StoriesCarousel from "../components/StoriesCarousel";
 
 const getDepartmentIcon = (department) => {
-  if (!department) return '👤';
+  if (!department) return "👤";
 
-  const deptLower = department?.toLowerCase() || '';
+  const deptLower = department?.toLowerCase() || "";
   const icons = {
-    'human resources': '👥',
-    'hr': '👥',
-    'finance': '💰',
-    'marketing': '📈',
-    'sales': '📊',
-    'it': '💻',
-    'technology': '💻',
-    'operations': '⚙️',
-    'customer service': '💁',
-    'r&d': '🔬',
-    'research': '🔬',
-    'procurement': '📦',
-    'logistics': '🚚',
-    'administration': '📋',
-    'legal': '⚖️',
-    'executive': '👔',
+    "human resources": "👥",
+    hr: "👥",
+    finance: "💰",
+    marketing: "📈",
+    sales: "📊",
+    it: "💻",
+    technology: "💻",
+    operations: "⚙️",
+    "customer service": "💁",
+    "r&d": "🔬",
+    research: "🔬",
+    procurement: "📦",
+    logistics: "🚚",
+    administration: "📋",
+    legal: "⚖️",
+    executive: "👔",
   };
 
-  return icons[deptLower] || '👤';
+  return icons[deptLower] || "👤";
 };
 
 const HomePage = () => {
@@ -113,6 +113,10 @@ const HomePage = () => {
     setShowStories(true);
   };
 
+  const shuffledRecommendedUsers = [...recommendedUsers]
+    .sort(() => 0.5 - Math.random())
+    .slice(0, 2);
+
   const currentUser = JSON.parse(localStorage.getItem("user"));
   const currentUserId = currentUser?.user?._id || currentUser?._id;
 
@@ -123,41 +127,40 @@ const HomePage = () => {
           {/* MAIN CONTENT */}
           <div className="lg:col-span-2 space-y-6">
             {/* Welcome Header */}
-            <div className="bg-gradient-to-r from-primary to-secondary text-primary-content rounded-2xl p-6 shadow-lg">
+            <div className="bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl p-4 shadow-md">
               <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-2xl font-bold mb-2">Welcome Back! 👋</h1>
-                  <p className="opacity-90">
-                    Connect with colleagues and stay updated with company news
+                  <h1 className="text-lg font-semibold mb-0.5">
+                    Welcome Back 👋
+                  </h1>
+                  <p className="text-sm opacity-85">
+                    Stay updated with company activities
                   </p>
                 </div>
-                <div className="hidden md:block">
-                  <BuildingIcon className="size-10 opacity-80" />
-                </div>
+                <BuildingIcon className="size-8 opacity-80 hidden md:block" />
               </div>
             </div>
 
             {/* Stories Preview - IMPROVED */}
-            <div className="card bg-base-100 shadow-md rounded-xl">
+            <div className="card bg-base-100 shadow rounded-xl">
               <div className="card-body p-4">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-primary to-secondary flex items-center justify-center">
-                      <Camera className="size-4 text-base-100" />
+                    <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
+                      <Camera className="size-3.5 text-base-100" />
                     </div>
                     <div>
-                      <h2 className="text-lg font-bold">Recent Stories</h2>
-                      <p className="text-sm opacity-70">
-                        Your friends' recent moments
-                      </p>
+                      <h2 className="text-sm font-semibold">Stories</h2>
+                      <p className="text-xs opacity-60">Latest moments</p>
                     </div>
                   </div>
+
                   <button
                     onClick={() => setShowCreateStory(true)}
-                    className="btn btn-primary btn-sm"
+                    className="btn btn-primary btn-xs"
                   >
-                    <Camera className="size-4 mr-1.5" />
-                    Create Story
+                    <Camera className="size-3 mr-1" />
+                    Create Stories
                   </button>
                 </div>
 
@@ -214,13 +217,13 @@ const HomePage = () => {
                           >
                             <div className="relative mb-2">
                               <div
-                                className={`w-20 h-20 rounded-full p-0.5 ${
+                                className={`w-16 h-16 rounded-full p-0.5 ${
                                   hasUnviewed
                                     ? "bg-gradient-to-r from-primary to-secondary"
                                     : "bg-gradient-to-r from-gray-300 to-gray-400"
                                 }`}
                               >
-                                <div className="w-full h-full rounded-full overflow-hidden border-2 border-base-100">
+                                <div className="w-full h-full rounded-full overflow-hidden border border-base-100">
                                   <img
                                     src={
                                       user.profilePic || "/default-avatar.png"
@@ -242,11 +245,12 @@ const HomePage = () => {
                                 </div>
                               )}
                             </div>
-                            <span className="text-xs font-medium truncate max-w-20">
+                            <span className="text-[11px] font-medium truncate max-w-16">
                               {user._id === currentUserId
                                 ? "You"
                                 : user.fullName}
                             </span>
+
                             {hasUnviewed && (
                               <div className="absolute -top-1 -left-1 w-3 h-3 bg-primary rounded-full animate-pulse"></div>
                             )}
@@ -280,39 +284,37 @@ const HomePage = () => {
             </div>
 
             {/* Create Post */}
-            <div className="card bg-base-100 shadow-md rounded-xl">
+            <div className="card bg-base-100 shadow rounded-xl">
               <div className="card-body p-4">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-secondary flex items-center justify-center">
-                    <MessageSquare className="size-5 text-primary-content" />
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                    <MessageSquare className="size-4 text-primary-content" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold">Create a New Post</h2>
-                    <p className="text-sm opacity-70">
-                      Share updates, photos, or videos
-                    </p>
+                    <h2 className="text-sm font-semibold">Create Post</h2>
+                    <p className="text-xs opacity-60">Share something</p>
                   </div>
                 </div>
+
                 <PostForm />
               </div>
             </div>
 
             {/* Timeline */}
-            <div className="card bg-base-100 shadow-md rounded-xl">
+            <div className="card bg-base-100 shadow rounded-xl">
               <div className="card-body p-4">
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h2 className="text-xl font-bold">Recent Posts</h2>
-                    <p className="text-sm opacity-70 mt-1">
-                      Latest updates from your network
-                    </p>
+                    <h2 className="text-base font-semibold">Recent Posts</h2>
+                    <p className="text-xs opacity-60">Latest from network</p>
                   </div>
+
                   <div className="flex items-center gap-2">
-                    <div className="badge badge-primary px-3 py-2 font-medium">
-                      {posts.length} {posts.length === 1 ? "post" : "posts"}
-                    </div>
-                    <Link to="/posts" className="btn btn-outline btn-sm">
-                      View All
+                    <span className="badge badge-primary badge-sm">
+                      {posts.length}
+                    </span>
+                    <Link to="/posts" className="btn btn-outline btn-xs">
+                      View all
                     </Link>
                   </div>
                 </div>
@@ -355,12 +357,12 @@ const HomePage = () => {
               <div className="card-body p-4">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h2 className="text-lg font-bold">Your Connections</h2>
-                    <p className="text-sm opacity-70">
-                      {friends.length} colleagues connected
+                    <h2 className="text-sm font-semibold">Connections</h2>
+                    <p className="text-xs opacity-60">
+                      {friends.length} connected
                     </p>
                   </div>
-                  <Link to="/connections" className="btn btn-outline btn-sm">
+                  <Link to="/friends" className="btn btn-outline btn-xs">
                     <UsersIcon className="size-4 mr-1" />
                     View All
                   </Link>
@@ -374,7 +376,7 @@ const HomePage = () => {
                   <NoFriendsFound />
                 ) : (
                   <div className="space-y-3">
-                    {friends.slice(0, 4).map((friend) => (
+                    {friends.slice(0, 1).map((friend) => (
                       <div key={friend._id} className="group">
                         <FriendCard friend={friend} />
                       </div>
@@ -387,7 +389,7 @@ const HomePage = () => {
             {/* RECOMMENDED USERS */}
             <div className="card bg-base-100 shadow-md rounded-xl">
               <div className="card-body p-4">
-                <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-3 p-2 border border-base-300 rounded-lg">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-success to-emerald-500 flex items-center justify-center">
                     <UserPlusIcon className="size-4 text-base-100" />
                   </div>
@@ -413,8 +415,8 @@ const HomePage = () => {
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {recommendedUsers.slice(0, 3).map((user) => {
+                  <div className="space-y-3">
+                    {shuffledRecommendedUsers.map((user) => {
                       const hasRequestBeenSent = outgoingRequestsIds.has(
                         user._id
                       );
@@ -422,72 +424,52 @@ const HomePage = () => {
                       return (
                         <div
                           key={user._id}
-                          className="p-4 border border-base-300 rounded-xl hover:border-primary/30 transition-colors group"
+                          className="flex items-center gap-3 p-3 border border-base-300 rounded-xl hover:border-primary/30 transition-colors"
                         >
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className="relative">
-                              <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-base-100 shadow-sm">
-                                <img
-                                  src={user.profilePic || "/default-avatar.png"}
-                                  alt={user.fullName}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    e.target.src = "/default-avatar.png";
-                                  }}
-                                />
-                              </div>
-                              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-gradient-to-r from-primary to-secondary rounded-full flex items-center justify-center">
-                                <span className="text-xs text-base-100 font-bold">
-                                  {getDepartmentIcon(user.department)}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold truncate">
-                                {user.fullName}
-                              </h3>
-
-                              {user.location && (
-                                <div className="flex items-center text-xs opacity-70 mt-1">
-                                  <MapPinIcon className="size-3 mr-1 flex-shrink-0" />
-                                  <span className="truncate">
-                                    {user.location}
-                                  </span>
-                                </div>
-                              )}
+                          {/* Avatar */}
+                          <div className="relative">
+                            <div className="w-11 h-11 rounded-full overflow-hidden">
+                              <img
+                                src={user.profilePic || "/default-avatar.png"}
+                                alt={user.fullName}
+                                className="w-full h-full object-cover"
+                                onError={(e) =>
+                                  (e.target.src = "/default-avatar.png")
+                                }
+                              />
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap gap-1.5 mb-4">
-                            <span className="badge badge-secondary badge-sm px-3 py-1.5">
-                              <span className="mr-1">
-                                {getDepartmentIcon(user.department)}
-                              </span>
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">
+                              {user.fullName}
+                            </p>
+
+                            {user.location && (
+                              <p className="text-xs opacity-70 truncate flex items-center gap-1">
+                                <MapPinIcon className="size-3" />
+                                {user.location}
+                              </p>
+                            )}
+
+                            <span className="badge badge-secondary badge-sm mt-1">
+                              {getDepartmentIcon(user.department)}{" "}
                               {user.department}
                             </span>
                           </div>
 
+                          {/* Action */}
                           <button
-                            className={`btn btn-sm w-full ${
+                            className={`btn btn-sm ${
                               hasRequestBeenSent
                                 ? "btn-disabled opacity-50"
-                                : "btn-primary"
+                                : "btn-outline btn-primary"
                             }`}
                             onClick={() => sendRequestMutation(user._id)}
                             disabled={hasRequestBeenSent || isPending}
                           >
-                            {hasRequestBeenSent ? (
-                              <>
-                                <CheckCircleIcon className="size-4 mr-1.5" />
-                                Request Sent
-                              </>
-                            ) : (
-                              <>
-                                <UserPlusIcon className="size-4 mr-1.5" />
-                                Add Friend
-                              </>
-                            )}
+                            {hasRequestBeenSent ? "Requested" : "Add"}
                           </button>
                         </div>
                       );
@@ -502,11 +484,12 @@ const HomePage = () => {
               <h3 className="font-bold mb-3">Your Network</h3>
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-base-100 p-3 rounded-lg border border-base-300">
-                  <div className="text-2xl font-bold text-primary">
+                  <div className="text-lg font-bold text-primary">
                     {friends.length}
                   </div>
-                  <div className="text-xs opacity-70">Friends</div>
+                  <div className="text-[11px] opacity-60">Friends</div>
                 </div>
+
                 <div className="bg-base-100 p-3 rounded-lg border border-base-300">
                   <div className="text-2xl font-bold text-secondary">
                     {posts.length}
@@ -533,7 +516,7 @@ const HomePage = () => {
 
       <button
         onClick={() => setShowCreateStory(true)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-primary to-secondary rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-40"
+        className="fixed bottom-5 right-5 w-12 h-12 bg-gradient-to-r from-primary to-secondary rounded-full shadow-md flex items-center justify-center z-40"
       >
         <Camera className="size-6 text-base-100" />
       </button>

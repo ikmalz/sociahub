@@ -1,7 +1,14 @@
 import React from "react";
 import useAuthUser from "../hooks/useAuthUser";
 import { Link, useLocation } from "react-router";
-import { BellIcon, HomeIcon, ShipWheelIcon, UserIcon } from "lucide-react";
+import {
+  BellIcon,
+  HomeIcon,
+  ShipWheelIcon,
+  UserIcon,
+  FileTextIcon,
+  ListIcon,
+} from "lucide-react";
 
 const Sidebar = () => {
   const { authUser } = useAuthUser();
@@ -10,6 +17,7 @@ const Sidebar = () => {
 
   return (
     <aside className="w-64 bg-base-200 border-r border-base-300 hidden lg:flex flex-col h-screen sticky top-0">
+      {/* LOGO */}
       <div className="p-5 border-b border-base-300">
         <Link to="/" className="flex items-center gap-2.5">
           <ShipWheelIcon className="size-9 text-primary" />
@@ -19,39 +27,65 @@ const Sidebar = () => {
         </Link>
       </div>
 
+      {/* NAV */}
       <nav className="flex-1 p-4 space-y-1">
+        {/* HOME */}
         <Link
           to="/"
           className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
             currentPath === "/" ? "btn-active" : ""
           }`}
         >
-          <HomeIcon className="size-5 text-base-content opacity-70" />
+          <HomeIcon className="size-5 opacity-70" />
           <span>Home</span>
         </Link>
 
+        {/* FRIENDS */}
         <Link
           to="/friends"
           className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
             currentPath === "/friends" ? "btn-active" : ""
           }`}
         >
-          <UserIcon className="size-5 text-base-content opacity-70" />
+          <UserIcon className="size-5 opacity-70" />
           <span>Friends</span>
         </Link>
 
+        {/* POSTS (PLACEHOLDER) */}
+        <Link
+          to="/my-posts"
+          className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
+            currentPath === "/my-posts" ? "btn-active" : ""
+          }`}
+        >
+          <FileTextIcon className="size-5 opacity-70" />
+          <span>My Posts</span>
+        </Link>
+
+        {/* VIEW ALL */}
+        <Link
+          to="/posts"
+          className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
+            currentPath === "/posts" ? "btn-active" : ""
+          }`}
+        >
+          <ListIcon className="size-5 opacity-70" />
+          <span>View All</span>
+        </Link>
+
+        {/* NOTIFICATIONS */}
         <Link
           to="/notifications"
           className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
             currentPath === "/notifications" ? "btn-active" : ""
           }`}
         >
-          <BellIcon className="size-5 text-base-content opacity-70" />
+          <BellIcon className="size-5 opacity-70" />
           <span>Notifications</span>
         </Link>
       </nav>
 
-      {/* USER PROFILE SECTION */}
+      {/* USER PROFILE */}
       <div className="p-4 border-t border-base-300 mt-auto">
         <div className="flex items-center gap-3">
           <div className="avatar">

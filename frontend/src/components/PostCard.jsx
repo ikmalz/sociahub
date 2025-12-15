@@ -277,7 +277,7 @@ const PostCard = ({
                     />
                   ) : (
                     <video
-                      ref={fullscreenVideoRef}  
+                      ref={fullscreenVideoRef}
                       src={mediaSrc}
                       onClick={togglePlay}
                       className="w-full h-full object-contain"
@@ -615,20 +615,53 @@ const PostCard = ({
   return (
     <>
       {isEditing ? (
-        <div className="mb-4">
-          <PostForm
-            postId={post._id}
-            initialData={{
-              content: post.content,
-              imageUrl: post.imageUrl,
-              videoUrl: post.videoUrl,
-              location: post.location,
-              eventDate: post.eventDate,
-              mood: post.mood,
-            }}
-            isEditMode={true}
-            onClose={() => setIsEditing(false)}
-          />
+        <div className="card bg-base-100 border border-base-300 shadow-sm mb-4">
+          <div className="card-body p-4">
+            {/* EDIT HEADER */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3">
+                <div className="avatar">
+                  <div className="w-9 h-9 rounded-full ring ring-primary ring-offset-1">
+                    <img
+                      src={post.user?.profilePic || "/default-avatar.png"}
+                      alt={post.user?.fullName}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-sm">Edit Post</h3>
+                  <p className="text-[11px] opacity-70">
+                    Update your post content
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsEditing(false)}
+                className="btn btn-ghost btn-xs"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <div className="divider my-1" />
+
+            {/* EDIT FORM */}
+            <PostForm
+              postId={post._id}
+              initialData={{
+                content: post.content,
+                imageUrl: post.imageUrl,
+                videoUrl: post.videoUrl,
+                location: post.location,
+                eventDate: post.eventDate,
+                mood: post.mood,
+              }}
+              isEditMode={true}
+              onClose={() => setIsEditing(false)}
+            />
+          </div>
         </div>
       ) : (
         <div className="card bg-base-100 border border-base-300 shadow-sm hover:shadow-md transition-all duration-300 mb-4">

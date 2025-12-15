@@ -2,12 +2,12 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import FriendCard from "../components/FriendCard";
 import PageLoader from "../components/PageLoader";
-import { getUserFriends } from "../lib/api"; // Pastikan nama function benar
+import { getUserFriends } from "../lib/api";
 
 const FriendsPage = () => {
   const { data: friends = [], isLoading } = useQuery({
     queryKey: ["friends"],
-    queryFn: getUserFriends, // Ubah ke getUserFriends jika itu nama function yang benar
+    queryFn: getUserFriends, 
   });
 
   if (isLoading) return <PageLoader />;

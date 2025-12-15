@@ -234,6 +234,16 @@ export const updateProfile = async (userData) => {
   return response.data;
 };
 
+export async function getMyPosts() {
+  try {
+    const res = await axiosInstance.get("/posts/me");
+    return res.data;
+  } catch (error) {
+    console.error("getMyPosts error:", error);
+    return [];
+  }
+}
+
 // HAPUS YANG INI KARENA SUDAH ADA DI ATAS
 // export const getPostById = async (postId) => {
 //   const response = await fetch(`${API_BASE}/api/posts/${postId}`, {

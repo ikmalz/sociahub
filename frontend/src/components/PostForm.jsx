@@ -1,4 +1,3 @@
-// PostForm.jsx - VERSION FINAL (Improved Location Interface)
 import { useState, useRef, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createPost, updatePost } from "../lib/api";
@@ -37,12 +36,42 @@ const moods = [
 ];
 
 const officeLocations = [
-  { name: "Head Office", lat: -6.2088, lng: 106.8456, icon: "🏢", type: "Kantor Pusat" },
-  { name: "Meeting Room A", lat: -6.209, lng: 106.8458, icon: "👥", type: "Ruang Meeting" },
+  {
+    name: "Head Office",
+    lat: -6.2088,
+    lng: 106.8456,
+    icon: "🏢",
+    type: "Kantor Pusat",
+  },
+  {
+    name: "Meeting Room A",
+    lat: -6.209,
+    lng: 106.8458,
+    icon: "👥",
+    type: "Ruang Meeting",
+  },
   { name: "Cafeteria", lat: -6.2085, lng: 106.845, icon: "🍽️", type: "Kantin" },
-  { name: "Training Center", lat: -6.2095, lng: 106.846, icon: "🎓", type: "Pusat Pelatihan" },
-  { name: "Parking Area", lat: -6.208, lng: 106.8445, icon: "🅿️", type: "Parkir" },
-  { name: "IT Department", lat: -6.2087, lng: 106.8452, icon: "💻", type: "Departemen IT" },
+  {
+    name: "Training Center",
+    lat: -6.2095,
+    lng: 106.846,
+    icon: "🎓",
+    type: "Pusat Pelatihan",
+  },
+  {
+    name: "Parking Area",
+    lat: -6.208,
+    lng: 106.8445,
+    icon: "🅿️",
+    type: "Parkir",
+  },
+  {
+    name: "IT Department",
+    lat: -6.2087,
+    lng: 106.8452,
+    icon: "💻",
+    type: "Departemen IT",
+  },
   { name: "HR Office", lat: -6.2089, lng: 106.8454, icon: "📋", type: "HR" },
   { name: "Lobby", lat: -6.2086, lng: 106.8451, icon: "🏛️", type: "Lobi" },
 ];
@@ -124,14 +153,17 @@ const PostForm = ({
     setIsSearching(true);
     try {
       // Filter office locations
-      const filteredOffices = officeLocations.filter((loc) =>
-        loc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        loc.type.toLowerCase().includes(searchQuery.toLowerCase())
+      const filteredOffices = officeLocations.filter(
+        (loc) =>
+          loc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          loc.type.toLowerCase().includes(searchQuery.toLowerCase())
       );
 
       // Search external locations with better parameters for Indonesia
       const response = await fetch(
-        `https://photon.komoot.io/api/?q=${encodeURIComponent(searchQuery)}&limit=8&lang=id&location_bias=rect:95,-11,141,6`
+        `https://photon.komoot.io/api/?q=${encodeURIComponent(
+          searchQuery
+        )}&limit=8&lang=id&location_bias=rect:95,-11,141,6`
       );
 
       if (!response.ok) throw new Error(`API error: ${response.status}`);
@@ -139,49 +171,53 @@ const PostForm = ({
 
       let photonResults = [];
       if (data?.features) {
-        photonResults = data.features.map((feature) => {
-          const props = feature.properties || {};
-          const coords = feature.geometry?.coordinates || [0, 0];
-          
-          // Better name extraction for Indonesian locations
-          let name = props.name || props.street || "Lokasi";
-          let address = "";
-          
-          // Build better address for Indonesian context
-          const addressParts = [];
-          if (props.street) addressParts.push(props.street);
-          if (props.city) addressParts.push(props.city);
-          if (props.state) addressParts.push(props.state);
-          if (props.country === "Indonesia" && addressParts.length > 0) {
-            address = addressParts.join(", ");
-          } else if (props.country) {
-            address = addressParts.concat(props.country).join(", ");
-          }
+        photonResults = data.features
+          .map((feature) => {
+            const props = feature.properties || {};
+            const coords = feature.geometry?.coordinates || [0, 0];
 
-          return {
-            name: name,
-            address: address,
-            lat: coords[1],
-            lng: coords[0],
-            source: "photon",
-            icon: getLocationIcon(props),
-          };
-        }).filter(result => result.address.includes("Indonesia") || result.address === "");
+            // Better name extraction for Indonesian locations
+            let name = props.name || props.street || "Lokasi";
+            let address = "";
+
+            // Build better address for Indonesian context
+            const addressParts = [];
+            if (props.street) addressParts.push(props.street);
+            if (props.city) addressParts.push(props.city);
+            if (props.state) addressParts.push(props.state);
+            if (props.country === "Indonesia" && addressParts.length > 0) {
+              address = addressParts.join(", ");
+            } else if (props.country) {
+              address = addressParts.concat(props.country).join(", ");
+            }
+
+            return {
+              name: name,
+              address: address,
+              lat: coords[1],
+              lng: coords[0],
+              source: "photon",
+              icon: getLocationIcon(props),
+            };
+          })
+          .filter(
+            (result) =>
+              result.address.includes("Indonesia") || result.address === ""
+          );
       }
 
       // Combine and prioritize Indonesian results
       const allResults = [...filteredOffices, ...photonResults];
-      
+
       // Sort by relevance: exact matches first, then partial
-      const exactMatches = allResults.filter(r => 
-        r.name.toLowerCase() === searchQuery.toLowerCase()
+      const exactMatches = allResults.filter(
+        (r) => r.name.toLowerCase() === searchQuery.toLowerCase()
       );
-      const partialMatches = allResults.filter(r => 
-        !exactMatches.includes(r)
+      const partialMatches = allResults.filter(
+        (r) => !exactMatches.includes(r)
       );
-      
+
       setSearchResults([...exactMatches, ...partialMatches]);
-      
     } catch (error) {
       console.error("Search error:", error);
       toast.error("Gagal mencari lokasi. Coba kata kunci lain.");
@@ -438,77 +474,110 @@ const PostForm = ({
     return mood ? mood.icon : "😊";
   };
 
+  const isVideoPreview = () => {
+    if (media) return media.type.startsWith("video/");
+    if (!preview) return false;
+
+    return (
+      preview.endsWith(".mp4") ||
+      preview.endsWith(".webm") ||
+      preview.endsWith(".mov") ||
+      preview.startsWith("data:video")
+    );
+  };
+
   return (
     <>
       <form
         onSubmit={handleSubmit}
-        className="bg-base-200 p-5 rounded-xl shadow-md hover:shadow-lg transition-all duration-300"
+        className="bg-base-100 border border-base-300 p-4 rounded-xl shadow-sm transition-all"
       >
+        {/* TEXTAREA */}
         <textarea
-          className="textarea textarea-bordered w-full min-h-[70px] max-h-[220px] resize-none bg-base-100 rounded-xl shadow-sm transition-all duration-300 focus:border-primary"
-          placeholder="Bagikan pembaruan, pengumuman, atau pencapaian kerja..."
+          className="textarea textarea-bordered w-full min-h-[80px] resize-none bg-base-100 rounded-lg text-sm leading-relaxed focus:border-primary focus:outline-none"
+          placeholder="Edit your post..."
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={3}
         />
 
         {preview && (
-          <div className="relative mt-4 group">
-            {preview.includes("video") ||
-            (media && media.type.startsWith("video/")) ? (
+          <div className="relative mt-4 rounded-xl overflow-hidden border border-base-300 bg-black">
+            {/* VIDEO */}
+            {isVideoPreview() ? (
               <video
                 src={preview}
                 controls
-                className="rounded-xl w-full max-h-80 object-cover"
+                className="w-full max-h-80 object-contain bg-black"
               />
             ) : (
-              <img
-                src={preview}
-                alt="Preview"
-                className="rounded-xl w-full max-h-80 object-cover group-hover:opacity-90 transition"
-              />
+              <>
+                {/* IMAGE */}
+                <img
+                  src={preview}
+                  alt="Preview"
+                  className="w-full max-h-80 object-contain bg-black"
+                />
+
+                {/* OVERLAY HANYA UNTUK IMAGE */}
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
+              </>
             )}
+
+            {/* REMOVE BUTTON */}
             <button
               type="button"
               onClick={removeMedia}
-              className="absolute top-3 right-3 bg-red-600 text-white p-2 rounded-full shadow-lg hover:bg-red-700 transition"
+              className="
+        absolute top-3 right-3 z-30
+        bg-black/70 backdrop-blur
+        text-white p-2 rounded-full
+        hover:bg-red-600 transition
+        shadow-lg
+      "
             >
               <X size={18} />
             </button>
           </div>
         )}
 
-        {/* Selected Features Preview */}
-        <div className="mt-3 flex flex-wrap gap-2">
-          {locationName && (
-            <div className="badge badge-outline badge-sm flex items-center gap-1">
-              <MapPin className="size-3" />
-              <span className="max-w-[150px] truncate">{locationName}</span>
-            </div>
-          )}
-          {eventDate && (
-            <div className="badge badge-outline badge-sm flex items-center gap-1">
-              <Calendar className="size-3" />
-              <span className="text-xs">
-                {eventDate} {eventTime && `• ${eventTime}`}
-              </span>
-            </div>
-          )}
-          {selectedMood && (
-            <div className="badge badge-outline badge-sm flex items-center gap-1">
-              <span className="text-sm">{getMoodIcon(selectedMood)}</span>
-              <span className="text-xs">
-                {moods.find((m) => m.value === selectedMood)?.label}
-              </span>
-            </div>
-          )}
-        </div>
+        {/* META INFO */}
+        {(locationName || eventDate || selectedMood) && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {locationName && (
+              <div className="badge badge-outline badge-sm flex items-center gap-1">
+                <MapPin className="size-3" />
+                <span className="truncate max-w-[150px]">{locationName}</span>
+              </div>
+            )}
 
-        {/* Action Bar */}
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <label className="cursor-pointer btn btn-ghost btn-sm rounded-full hover:bg-base-300 flex items-center gap-2">
+            {eventDate && (
+              <div className="badge badge-outline badge-sm flex items-center gap-1">
+                <Calendar className="size-3" />
+                <span className="text-xs">
+                  {eventDate} {eventTime && `• ${eventTime}`}
+                </span>
+              </div>
+            )}
+
+            {selectedMood && (
+              <div className="badge badge-outline badge-sm flex items-center gap-1">
+                <span>{getMoodIcon(selectedMood)}</span>
+                <span className="text-xs">
+                  {moods.find((m) => m.value === selectedMood)?.label}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="divider my-3" />
+
+        {/* ACTION BAR */}
+        <div className="flex items-center gap-2">
+          {/* LEFT ACTIONS */}
+          <label className="btn btn-ghost btn-sm btn-circle">
             <ImageIcon className="size-4" />
-            <span className="text-xs">Media</span>
             <input
               ref={fileInputRef}
               type="file"
@@ -521,61 +590,55 @@ const PostForm = ({
           <button
             type="button"
             onClick={() => setShowLocationModal(true)}
-            className="btn btn-ghost btn-sm rounded-full hover:bg-base-300 flex items-center gap-2"
+            className="btn btn-ghost btn-sm btn-circle"
           >
             <MapPin className="size-4" />
-            <span className="text-xs">
-              {locationName ? "Ubah Lokasi" : "Lokasi"}
-            </span>
           </button>
 
           <button
             type="button"
             onClick={() => setShowCalendarModal(true)}
-            className="btn btn-ghost btn-sm rounded-full hover:bg-base-300 flex items-center gap-2"
+            className="btn btn-ghost btn-sm btn-circle"
           >
             <Calendar className="size-4" />
-            <span className="text-xs">Acara</span>
           </button>
 
           <button
             type="button"
             onClick={() => setShowMoodModal(true)}
-            className="btn btn-ghost btn-sm rounded-full hover:bg-base-300 flex items-center gap-2"
+            className="btn btn-ghost btn-sm btn-circle"
           >
             <Smile className="size-4" />
-            <span className="text-xs">Mood</span>
           </button>
 
-          <button
-            type="submit"
-            disabled={isPending || (!text.trim() && !media && !preview)}
-            className="ml-auto btn btn-primary btn-sm rounded-full px-4 shadow-md hover:shadow-lg transition disabled:opacity-50"
-          >
-            {isPending ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="animate-spin" size={16} />
-                <span className="text-xs">
-                  {isEditMode ? "Memperbarui..." : "Memposting..."}
-                </span>
-              </span>
-            ) : isEditMode ? (
-              "Perbarui"
-            ) : (
-              "Bagikan"
+          {/* RIGHT ACTIONS */}
+          <div className="ml-auto flex items-center gap-2">
+            {isEditMode && onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="btn btn-ghost btn-sm"
+                disabled={isPending}
+              >
+                Batal
+              </button>
             )}
-          </button>
 
-          {isEditMode && onClose && (
             <button
-              type="button"
-              onClick={onClose}
-              className="btn btn-ghost btn-sm"
-              disabled={isPending}
+              type="submit"
+              disabled={isPending || (!text.trim() && !media && !preview)}
+              className="btn btn-primary btn-sm px-5"
             >
-              <span className="text-xs">Batal</span>
+              {isPending ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="animate-spin" size={14} />
+                  <span className="text-xs">Memperbarui...</span>
+                </span>
+              ) : (
+                "Perbarui"
+              )}
             </button>
-          )}
+          </div>
         </div>
       </form>
 
@@ -606,7 +669,10 @@ const PostForm = ({
               <button
                 onClick={() => {
                   setSelectedOption("search");
-                  setTimeout(() => document.getElementById("searchInput")?.focus(), 100);
+                  setTimeout(
+                    () => document.getElementById("searchInput")?.focus(),
+                    100
+                  );
                 }}
                 className={`card bg-base-100 border p-3 flex flex-col items-center justify-center hover:bg-base-200 transition ${
                   selectedOption === "search" ? "border-primary shadow-md" : ""
@@ -658,7 +724,7 @@ const PostForm = ({
                     className="input input-bordered w-full pl-10 pr-20"
                     value={searchQuery}
                     onChange={handleSearchChange}
-                    onKeyPress={(e) => e.key === 'Enter' && searchLocations()}
+                    onKeyPress={(e) => e.key === "Enter" && searchLocations()}
                     autoFocus
                   />
                   <Search className="absolute left-3 top-3 size-4 text-gray-400" />
@@ -667,17 +733,19 @@ const PostForm = ({
                     disabled={isSearching}
                     className="absolute right-2 top-2 btn btn-primary btn-xs"
                   >
-                    {isSearching ? 'Mencari...' : 'Cari'}
+                    {isSearching ? "Mencari..." : "Cari"}
                   </button>
                 </div>
-                
+
                 {isSearching && (
                   <div className="flex justify-center items-center py-4">
                     <Loader2 className="animate-spin size-5 mr-2" />
-                    <span className="text-sm">Mencari lokasi di Indonesia...</span>
+                    <span className="text-sm">
+                      Mencari lokasi di Indonesia...
+                    </span>
                   </div>
                 )}
-                
+
                 {searchResults.length > 0 && !isSearching && (
                   <div className="mt-3 border rounded-lg max-h-64 overflow-y-auto">
                     <div className="p-2 text-sm font-medium border-b bg-base-100">
@@ -691,18 +759,26 @@ const PostForm = ({
                           className="p-3 hover:bg-base-200 cursor-pointer transition"
                         >
                           <div className="flex items-start gap-3">
-                            <div className="text-xl mt-1">{result.icon || (result.source === 'photon' ? '📍' : '🏢')}</div>
+                            <div className="text-xl mt-1">
+                              {result.icon ||
+                                (result.source === "photon" ? "📍" : "🏢")}
+                            </div>
                             <div className="flex-1">
                               <div className="font-medium">{result.name}</div>
                               {result.address && (
-                                <div className="text-xs text-gray-500 mt-1 truncate">{result.address}</div>
+                                <div className="text-xs text-gray-500 mt-1 truncate">
+                                  {result.address}
+                                </div>
                               )}
                               {result.type && (
-                                <div className="text-xs text-primary mt-1">{result.type}</div>
+                                <div className="text-xs text-primary mt-1">
+                                  {result.type}
+                                </div>
                               )}
-                              {result.source === 'photon' && (
+                              {result.source === "photon" && (
                                 <div className="text-xs text-gray-400 mt-1">
-                                  📍 {result.lat.toFixed(6)}, {result.lng.toFixed(6)}
+                                  📍 {result.lat.toFixed(6)},{" "}
+                                  {result.lng.toFixed(6)}
                                 </div>
                               )}
                             </div>
@@ -712,11 +788,15 @@ const PostForm = ({
                     </div>
                   </div>
                 )}
-                
+
                 {searchResults.length === 0 && searchQuery && !isSearching && (
                   <div className="mt-3 p-4 text-center border rounded-lg">
-                    <div className="text-gray-400">Tidak ada hasil untuk "{searchQuery}"</div>
-                    <div className="text-xs text-gray-500 mt-1">Coba kata kunci lain</div>
+                    <div className="text-gray-400">
+                      Tidak ada hasil untuk "{searchQuery}"
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      Coba kata kunci lain
+                    </div>
                   </div>
                 )}
               </div>
@@ -729,13 +809,16 @@ const PostForm = ({
                   <div className="font-medium">📍 Lokasi Kantor</div>
                   {userPosition && (
                     <div className="badge badge-sm badge-outline">
-                      {nearbyOffices.length > 0 ? 'Terdekat' : 'Semua'}
+                      {nearbyOffices.length > 0 ? "Terdekat" : "Semua"}
                     </div>
                   )}
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-3">
-                  {(nearbyOffices.length > 0 ? nearbyOffices : officeLocations).map((place, index) => (
+                  {(nearbyOffices.length > 0
+                    ? nearbyOffices
+                    : officeLocations
+                  ).map((place, index) => (
                     <button
                       key={index}
                       onClick={() => handleLocationSelect(place)}
@@ -744,8 +827,12 @@ const PostForm = ({
                       <div className="flex items-start gap-3">
                         <div className="text-2xl">{place.icon}</div>
                         <div className="flex-1">
-                          <div className="font-medium text-sm">{place.name}</div>
-                          <div className="text-xs text-gray-500 mt-1">{place.type}</div>
+                          <div className="font-medium text-sm">
+                            {place.name}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {place.type}
+                          </div>
                           {place.distance !== undefined && (
                             <div className="text-xs text-primary mt-2">
                               {place.distance < 1
@@ -758,10 +845,11 @@ const PostForm = ({
                     </button>
                   ))}
                 </div>
-                
+
                 {userPosition && nearbyOffices.length > 0 && (
                   <div className="mt-3 p-2 bg-primary/5 rounded text-xs text-gray-600">
-                    ※ Menampilkan {nearbyOffices.length} kantor terdekat dari lokasi Anda
+                    ※ Menampilkan {nearbyOffices.length} kantor terdekat dari
+                    lokasi Anda
                   </div>
                 )}
               </div>
