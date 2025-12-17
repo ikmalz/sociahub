@@ -22,6 +22,7 @@ import AdminDashboard from "./pages/AdminDashboard.jsx";
 import WaitingApproval from "./pages/WaitingApproval.jsx";
 import UserProfilePage from "./pages/UserProfilePage.jsx";
 import NetworkPage from "./pages/NetworkPage.jsx";
+import AdminAssignEmployeePage from "./pages/AdminAssignEmployeePage.jsx";
 
 const App = () => {
   const { isLoading, authUser } = useAuthUser();
@@ -275,15 +276,29 @@ const App = () => {
 
         {/* ADMIN ROUTES - HARUS ADMIN */}
         <Route
-          path="/admin"
+          path="/admin/users"
           element={
             <ProtectedRoute
+              requireAdmin={true}
               element={
                 <AdminLayout>
                   <AdminDashboard />
                 </AdminLayout>
               }
+            />
+          }
+        />
+
+        <Route
+          path="/admin/assign-employee"
+          element={
+            <ProtectedRoute
               requireAdmin={true}
+              element={
+                <AdminLayout>
+                  <AdminAssignEmployeePage />
+                </AdminLayout>
+              }
             />
           }
         />

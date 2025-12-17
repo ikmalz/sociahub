@@ -12,6 +12,7 @@ import chatRoutes from "./routes/chat.routes.js";
 import postRoutes from "./routes/post.route.js";
 import storyRoutes from "./routes/story.route.js";
 import adminRoutes from "./routes/admin.route.js";
+import projectRoutes from "./routes/project.routes.js";
 import { connectDB } from "./lib/db.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -47,6 +48,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/posts", postRoutes);
 app.use("/api/stories", storyRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/projects", projectRoutes);
 
 app.use("/api/*", (req, res) => {
   res.status(404).json({

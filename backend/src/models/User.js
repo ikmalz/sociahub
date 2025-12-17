@@ -21,37 +21,44 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: ["unassigned", "admin", "employee", "client"],
-      default: "unassigned", 
+      default: "unassigned",
     },
     isActive: {
       type: Boolean,
       default: false,
     },
-    
+
     // (instansi pemerintah)
     institutionName: {
       type: String,
-      default: ""
+      default: "",
     },
     institutionType: {
       type: String,
-      default: ""
+      default: "",
     },
     projectInterests: {
       type: String,
-      default: ""
+      default: "",
     },
     governmentLevel: {
       type: String,
-      default: ""
+      default: "",
     },
-    
+
     // employee (karyawan)
     employeeId: {
       type: String,
-      default: ""
+      default: "",
     },
-    
+
+    assignedClients: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User", 
+      },
+    ],
+
     companyName: {
       type: String,
       default: "",

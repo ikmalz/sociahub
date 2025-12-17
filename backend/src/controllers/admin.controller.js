@@ -106,3 +106,80 @@ export const rejectUser = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+export const assignEmployeeToClient = async (req, res) => {
+  try {
+    const { employeeIds, clientId } = req.body;
+
+    if (!clientId || !employeeIds?.length) {
+      return res.status(400).json({ message: "Invalid data" });
+    }
+
+    const client = await User.findById(clientId);
+    if (!client || client.role !== "client") {
+      return res.status(400).json({ message: "Invalid client" });
+    }
+
+    const employees = await User.find({
+      _id: { $in: employeeIds },
+      role: "employee",
+    });
+
+    if (employees.length !== employeeIds.length) {
+      return res
+        .status(400)
+        .json({ message: "One or more employees invalid" });
+    }
+
+    for (const emp of employees) {
+      if (!emp.assignedClients.includes(clientId)) {
+        emp.assignedClients.push(clientId);
+        await emp.save();
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Employees successfully assigned to client",
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+export const getClients = async (req, res) => {
+  try {
+    const clients = await User.find({
+      role: "client",
+      isActive: true,
+      approvalStatus: "approved",
+    }).select("fullName email institutionName");
+
+    res.status(200).json({
+      success: true,
+      count: clients.length,
+      clients,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const getEmployees = async (req, res) => {
+  try {
+    const employees = await User.find({
+      role: "employee",
+      isActive: true,
+      approvalStatus: "approved",
+    }).select("fullName email skills expertise");
+
+    res.status(200).json({
+      success: true,
+      count: employees.length,
+      employees,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};

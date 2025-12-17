@@ -78,21 +78,68 @@ export async function getStreamToken() {
 }
 
 // ========= POSTS API ========= //
-export async function getPosts() {
+export const getMyProjects = async () => {
   try {
-    const res = await axiosInstance.get("/posts");
-
-    if (Array.isArray(res.data)) {
-      return res.data;
-    }
-
-    console.warn("Unexpected response:", res.data);
-    return [];
+    const res = await axiosInstance.get("/projects/my-projects");
+    return res.data.projects || [];
   } catch (error) {
-    console.error("getPosts error:", error);
+    console.error("Error fetching my projects:", error);
     return [];
   }
-}
+};
+
+export const getPosts = async () => {
+  try {
+    const res = await axiosInstance.get("/posts");
+    return res.data.posts || [];
+  } catch (error) {
+    console.error("Error fetching posts:", error);
+    return [];
+  }
+};
+
+export const assignEmployeeToClient = async ({ clientId, employeeIds }) => {
+  const res = await axiosInstance.post("/admin/assign-employee", {
+    clientId,
+    employeeIds,
+  });
+  return res.data;
+};
+
+export const getAllowedEmployees = async () => {
+  try {
+    const res = await axiosInstance.get("/projects/allowed-employees");
+    return res.data.employees || [];
+  } catch (error) {
+    console.error("Error fetching allowed employees:", error);
+    return [];
+  }
+};
+
+export const updateProjectProgress = async (projectId, progress) => {
+  try {
+    const res = await axiosInstance.put(`/projects/${projectId}/progress`, {
+      progress,
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Error updating project progress:", error);
+    throw error;
+  }
+};
+
+export const createProject = async (projectData) => {
+  try {
+    const res = await axiosInstance.post("/projects", projectData);
+    return res.data;
+  } catch (error) {
+    console.error(
+      "Error creating project:",
+      error.response?.data || error.message
+    );
+    throw error;
+  }
+};
 
 export async function createPost(postData) {
   try {
@@ -262,9 +309,20 @@ export async function getMyPosts() {
   }
 }
 
+// ========= ADMIN - CLIENTS ========= //
+export const getClients = async () => {
+  const res = await axiosInstance.get("/admin/clients");
+  return res.data.clients;
+};
+
+export const getEmployees = async () => {
+  const res = await axiosInstance.get("/admin/employees");
+  return res.data.employees;
+};
+
 export const getClientContacts = async () => {
   try {
-    const res = await axiosInstance.get("/users/client-contacts"); 
+    const res = await axiosInstance.get("/users/client-contacts");
     return res.data.users || [];
   } catch (error) {
     console.error("Error fetching client contacts:", error);

@@ -9,6 +9,8 @@ import {
   sendFriendRequest,
   getClientContacts,
   getProjects,
+  getMyProjects,
+  getAllowedEmployees,
 } from "../lib/api";
 import { Link } from "react-router";
 import {
@@ -27,6 +29,7 @@ import {
   Landmark,
   Calendar,
   Target,
+  TrendingUp,
 } from "lucide-react";
 import FriendCard from "../components/FriendCard";
 import NoFriendsFound from "../components/NoFriendsFound";
@@ -38,6 +41,8 @@ import StoryCreateModal from "../components/StoryCreateModal";
 import StoriesCarousel from "../components/StoriesCarousel";
 import useAuthUser from "../hooks/useAuthUser";
 import { getVisibleRoles } from "../utils/roleFilter";
+import ProjectCreateModal from "../components/ProjectCreateModal";
+import ProjectProgressUpdate from "../components/ProjectProgressUpdate";
 
 const getDepartmentIcon = (department) => {
   if (!department) return "👤";
@@ -79,6 +84,7 @@ const HomePage = () => {
   const [showStories, setShowStories] = useState(false);
   const [selectedStoryIndex, setSelectedStoryIndex] = useState(0);
   const [selectedUserIndex, setSelectedUserIndex] = useState(0);
+  const [showProjectModal, setShowProjectModal] = useState(false);
 
   const { data: friends = [], isLoading: loadingFriends } = useQuery({
     queryKey: ["friends"],
@@ -114,10 +120,10 @@ const HomePage = () => {
     queryFn: getTimelineStories,
   });
 
-  const { data: projects = [] } = useQuery({
-    queryKey: ["projects"],
-    queryFn: getProjects,
-    enabled: false,
+  const { data: projects = [], isLoading: loadingProjects } = useQuery({
+    queryKey: ["my-projects", userRole],
+    queryFn: getMyProjects,
+    enabled: isClient || isEmployee,
   });
 
   const { mutate: sendRequestMutation, isPending } = useMutation({
@@ -127,6 +133,13 @@ const HomePage = () => {
       queryClient.invalidateQueries({ queryKey: ["users"] });
     },
   });
+
+  const { data: availableEmployees = [], isLoading: loadingEmployees } =
+    useQuery({
+      queryKey: ["allowed-employees"],
+      queryFn: getAllowedEmployees,
+      enabled: isClient,
+    });
 
   useEffect(() => {
     const outgoingIds = new Set();
@@ -170,8 +183,8 @@ const HomePage = () => {
       <div className="container mx-auto px-4 sm:px-5 lg:px-8 py-5">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* MAIN CONTENT */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Welcome Header berdasarkan role */}
+          <div className="lg:col-span-2">
+            {/* Welcome Header */}
             <div
               className={`bg-gradient-to-r ${
                 isClient
@@ -179,8 +192,9 @@ const HomePage = () => {
                   : "from-primary to-secondary"
               } ${
                 isClient ? "border-l-4 border-primary" : "text-primary-content"
-              } rounded-xl p-4 shadow-md`}
+              } rounded-xl p-4 shadow-md mb-6`}
             >
+
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
@@ -214,7 +228,102 @@ const HomePage = () => {
                 />
               </div>
             </div>
+            
+            {isEmployee && (
+              <div className="card bg-base-100 shadow rounded-xl">
+                <div className="card-body p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Briefcase className="size-5 text-primary" />
+                      </div>
+                      <div>
+                        <h2 className="text-base font-semibold">
+                          My Assigned Projects
+                        </h2>
+                        <p className="text-xs opacity-60">
+                          Projects assigned to you by clients
+                        </p>
+                      </div>
+                    </div>
+                    <span className="badge badge-primary badge-sm">
+                      {projects.length || 0}
+                    </span>
+                  </div>
 
+                  {loadingProjects ? (
+                    <div className="flex justify-center py-6">
+                      <span className="loading loading-spinner loading-md text-primary" />
+                    </div>
+                  ) : projects.length === 0 ? (
+                    <div className="text-center py-8 opacity-70">
+                      <p className="text-sm">No projects assigned yet</p>
+                      <p className="text-xs mt-1">
+                        Clients will assign projects to you here
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-4">
+                      {projects.map((project) => (
+                        <div
+                          key={project._id}
+                          className="card bg-base-100 border border-base-300 p-4 hover:shadow-md transition"
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <h4 className="font-medium text-sm">
+                                {project.title}
+                              </h4>
+                              {project.client && (
+                                <p className="text-xs opacity-70 mt-1">
+                                  Client: {project.client.fullName}
+                                  {project.client.institutionName &&
+                                    ` (${project.client.institutionName})`}
+                                </p>
+                              )}
+                            </div>
+                            <span
+                              className={`badge badge-sm ${
+                                project.status === "completed"
+                                  ? "badge-success"
+                                  : project.status === "active"
+                                  ? "badge-warning"
+                                  : "badge-info"
+                              }`}
+                            >
+                              {project.status}
+                            </span>
+                          </div>
+
+                          <p className="text-xs opacity-70 mb-3 line-clamp-2">
+                            {project.description}
+                          </p>
+
+                          <div className="flex justify-between items-center text-xs opacity-60 mb-3">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="size-3" />
+                              <span>
+                                {new Date(
+                                  project.createdAt
+                                ).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <UsersIcon className="size-3" />
+                              <span>
+                                {project.employees?.length || 1} team members
+                              </span>
+                            </div>
+                          </div>
+
+                          <ProjectProgressUpdate project={project} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             {/* Stories Preview - HIDDEN untuk client */}
             {!isClient && (
               <div className="card bg-base-100 shadow rounded-xl">
@@ -358,7 +467,6 @@ const HomePage = () => {
                 </div>
               </div>
             )}
-
             {/* Create Post - HIDDEN untuk client */}
             {!isClient && (
               <div className="card bg-base-100 shadow rounded-xl">
@@ -379,7 +487,6 @@ const HomePage = () => {
                 </div>
               </div>
             )}
-
             {/* Untuk Client: Project Overview */}
             {isClient && (
               <div className="card bg-base-100 shadow rounded-xl">
@@ -398,78 +505,116 @@ const HomePage = () => {
                         </p>
                       </div>
                     </div>
-                    <span className="badge badge-primary badge-sm">
-                      {projects.length || 0}
-                    </span>
-                  </div>
-
-                  {projects.length === 0 ? (
-                    <div className="text-center py-8">
-                      <div className="w-16 h-16 mx-auto mb-4 bg-base-200 rounded-full flex items-center justify-center">
-                        <FileText className="size-8 opacity-40" />
-                      </div>
-                      <h3 className="text-lg font-semibold mb-2">
-                        No active projects
-                      </h3>
-                      <p className="opacity-70 max-w-sm mx-auto mb-4">
-                        Start a new project with our team
-                      </p>
-                      <button className="btn btn-primary btn-sm">
-                        <Briefcase className="size-4 mr-2" />
-                        Start New Project
+                    <div className="flex gap-2">
+                      <span className="badge badge-primary badge-sm">
+                        {projects.length || 0}
+                      </span>
+                      <button
+                        onClick={() => setShowProjectModal(true)}
+                        className="btn btn-primary btn-sm"
+                      >
+                        <FileText className="size-4 mr-1" />
+                        New Project
                       </button>
                     </div>
+                  </div>
+
+                  {loadingProjects ? (
+                    <div className="flex justify-center py-6">
+                      <span className="loading loading-spinner loading-md text-primary" />
+                    </div>
+                  ) : projects.length === 0 ? (
+                    <div className="text-center py-8 opacity-70">
+                      <p className="text-sm">No active projects yet</p>
+                      <p className="text-xs mt-1">
+                        Projects assigned to you will appear here
+                      </p>
+                    </div>
                   ) : (
-                    <div className="space-y-4">
-                      {projects.slice(0, 3).map((project) => (
+                    <div className="grid gap-4">
+                      {projects.map((project) => (
                         <div
                           key={project._id}
-                          className="border border-base-300 rounded-lg p-4 hover:border-primary/30 transition-colors"
+                          className="card bg-base-100 border border-base-300 p-4 hover:shadow-md transition"
                         >
-                          <div className="flex items-start justify-between mb-2">
-                            <h4 className="font-medium">{project.name}</h4>
+                          <div className="flex justify-between items-start mb-2">
+                            <div>
+                              <h4 className="font-medium text-sm">
+                                {project.title}
+                              </h4>
+                              {project.employees &&
+                                project.employees.length > 0 && (
+                                  <p className="text-xs opacity-70 mt-1">
+                                    Team:{" "}
+                                    {project.employees
+                                      .map((e) => e.fullName)
+                                      .join(", ")}
+                                  </p>
+                                )}
+                            </div>
                             <span
                               className={`badge badge-sm ${
-                                project.status === "active"
+                                project.status === "completed"
                                   ? "badge-success"
-                                  : "badge-warning"
+                                  : project.status === "active"
+                                  ? "badge-warning"
+                                  : "badge-info"
                               }`}
                             >
                               {project.status}
                             </span>
                           </div>
-                          <p className="text-sm opacity-70 mb-3 line-clamp-2">
+
+                          <p className="text-xs opacity-70 mb-3 line-clamp-2">
                             {project.description}
                           </p>
-                          <div className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-2">
-                              <Calendar className="size-3 opacity-60" />
-                              <span>
-                                Due:{" "}
-                                {new Date(project.dueDate).toLocaleDateString()}
+
+                          {/* Progress untuk Client */}
+                          <div className="mt-3">
+                            <div className="flex justify-between items-center mb-2">
+                              <div className="flex items-center gap-2">
+                                <TrendingUp className="size-4 text-primary" />
+                                <span className="text-xs font-medium">
+                                  Current Progress
+                                </span>
+                              </div>
+                              <span className="text-sm font-semibold">
+                                {project.progress || 0}%
                               </span>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <UsersIcon className="size-3 opacity-60" />
-                              <span>{project.team?.length || 0} members</span>
+
+                            <progress
+                              className="progress progress-primary w-full"
+                              value={project.progress || 0}
+                              max="100"
+                            ></progress>
+
+                            <div className="flex justify-between text-xs opacity-60 mt-2">
+                              <span>Updated by team</span>
+                              <span>
+                                Last updated:{" "}
+                                {new Date(
+                                  project.updatedAt
+                                ).toLocaleDateString()}
+                              </span>
                             </div>
+                          </div>
+
+                          <div className="flex justify-between items-center text-xs opacity-60 mt-3 pt-3 border-t border-base-300">
+                            <span>
+                              {new Date(project.createdAt).toLocaleDateString()}
+                            </span>
+                            <span>
+                              {project.employees?.length || 0} members
+                            </span>
                           </div>
                         </div>
                       ))}
-                      <div className="text-center pt-2">
-                        <Link
-                          to="/projects"
-                          className="text-primary text-sm hover:underline"
-                        >
-                          View all projects →
-                        </Link>
-                      </div>
                     </div>
                   )}
                 </div>
               </div>
             )}
-
             {/* Timeline - Tampilkan semua untuk employee, hanya post terkait untuk client */}
             <div className="card bg-base-100 shadow rounded-xl">
               <div className="card-body p-4">
@@ -594,10 +739,10 @@ const HomePage = () => {
                         : "Connect with clients you collaborate with"}
                     </p>
                   </div>
-                    <Link to="/network" className="btn btn-outline btn-xs">
-                      <UsersIcon className="size-4 mr-1" />
-                      View All
-                    </Link>
+                  <Link to="/network" className="btn btn-outline btn-xs">
+                    <UsersIcon className="size-4 mr-1" />
+                    View All
+                  </Link>
                 </div>
 
                 {loadingUsers ? (
@@ -747,6 +892,17 @@ const HomePage = () => {
           onClose={() => setShowStories(false)}
           initialStoryIndex={selectedStoryIndex}
           initialUserIndex={selectedUserIndex}
+        />
+      )}
+
+      {showProjectModal && (
+        <ProjectCreateModal
+          isOpen={showProjectModal}
+          onClose={() => {
+            console.log("Closing modal");
+            setShowProjectModal(false);
+          }}
+          availableEmployees={availableEmployees}
         />
       )}
     </div>

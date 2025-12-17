@@ -98,15 +98,35 @@ const Sidebar = () => {
 
         {/* ADMIN MENU */}
         {authUser?.role === "admin" && (
-          <Link
-            to="/admin"
-            className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
-              currentPath === "/admin" ? "btn-active" : ""
-            }`}
-          >
-            <ShieldIcon className="size-5 opacity-70 text-error" />
-            <span className="text-error font-semibold">Admin Panel</span>
-          </Link>
+          <div className="mt-4">
+            <p className="px-3 mb-2 text-xs font-semibold uppercase opacity-50">
+              Admin
+            </p>
+
+            {/* User Approval */}
+            <Link
+              to="/admin/users"
+              className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
+                currentPath.startsWith("/admin/users") ? "btn-active" : ""
+              }`}
+            >
+              <ShieldIcon className="size-5 opacity-70 text-error" />
+              <span className="font-semibold">User Approval</span>
+            </Link>
+
+            {/* Assign Employee */}
+            <Link
+              to="/admin/assign-employee"
+              className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
+                currentPath.startsWith("/admin/assign-employee")
+                  ? "btn-active"
+                  : ""
+              }`}
+            >
+              <UserIcon className="size-5 opacity-70 text-warning" />
+              <span className="font-semibold">Assign Employee</span>
+            </Link>
+          </div>
         )}
       </nav>
 
