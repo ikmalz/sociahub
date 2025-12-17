@@ -8,6 +8,7 @@ import {
   UserCheckIcon,
 } from "lucide-react";
 import NoNotificationsFound from "../components/NoNotificationsFound";
+import { useEffect } from "react";
 
 const NotificationsPage = () => {
   const queryClient = useQueryClient();
@@ -25,8 +26,15 @@ const NotificationsPage = () => {
     },
   });
 
+  
   const incomingRequest = friendRequests?.incomingReqs || [];
   const acceptedRequests = friendRequests?.acceptedReqs || [];
+
+  useEffect(() => {
+    acceptedRequests.forEach((notif) => {
+      localStorage.setItem(`notif-read-${notif._id}`, "true");
+    });
+  }, [acceptedRequests]);
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">

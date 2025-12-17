@@ -49,9 +49,7 @@ const StoriesCarousel = ({
   const progressIntervalRef = useRef(null);
   const optionsRef = useRef(null);
   const lastToggleTimeRef = useRef(0);
-  // Menambahkan ref untuk menyimpan waktu video terakhir pause
   const lastVideoTimeRef = useRef(0);
-  // Menambahkan ref untuk menyimpan waktu progress terakhir
   const progressStartTimeRef = useRef(0);
   const elapsedTimeRef = useRef(0);
 
@@ -62,7 +60,18 @@ const StoriesCarousel = ({
   const currentUser = JSON.parse(localStorage.getItem("user"));
   const currentUserId = currentUser?.user?._id || currentUser?._id;
 
-  const isStoryOwner = currentStory?.user?._id === currentUserId;
+  const userRole = currentUser?.role || currentUser?.user?.role;
+
+  const storyOwnerId =
+    currentStory?.user?._id ??
+    currentStory?.user?.userId ??
+    currentStory?.user?.employeeId ??
+    currentStory?.user; 
+
+  const isOwner =
+    storyOwnerId && String(storyOwnerId) === String(currentUserId);
+
+  const isStoryOwner = isOwner || userRole === "admin";
 
   const getActualViewerCount = () => {
     if (!currentStory?.views?.length) return 0;
@@ -178,7 +187,6 @@ const StoriesCarousel = ({
         setVideoDuration(cappedDuration * 1000);
         setVideoReady(true);
       } else {
-        // Fallback jika duration tidak valid
         setVideoDuration(5000);
         setVideoReady(true);
       }
@@ -187,29 +195,23 @@ const StoriesCarousel = ({
 
   const handleVideoError = () => {
     console.error("Video loading error");
-    // Fallback ke durasi default jika video error
     setVideoDuration(5000);
     setVideoReady(true);
   };
 
-  // Fungsi untuk mengatur suara video
   const setupVideoAudio = () => {
     if (videoRef.current && currentStory?.mediaType === "video") {
-      // Reset volume ke 1 (full volume)
       videoRef.current.volume = 1;
-      // Set muted ke false agar suara muncul
       videoRef.current.muted = false;
-      // Set properti untuk autoplay dengan suara
       videoRef.current.playsInline = true;
       videoRef.current.crossOrigin = "anonymous";
     }
   };
 
-  // Fungsi untuk menghitung progress berdasarkan waktu video
   const calculateProgressFromVideoTime = () => {
     if (videoRef.current && currentStory?.mediaType === "video") {
       const duration = videoDuration;
-      const currentTime = videoRef.current.currentTime * 1000; // Convert to ms
+      const currentTime = videoRef.current.currentTime * 1000;
       const newProgress = Math.min((currentTime / duration) * 100, 100);
       setProgress(newProgress);
       return newProgress;
@@ -217,7 +219,6 @@ const StoriesCarousel = ({
     return progress;
   };
 
-  // Fungsi untuk memulai interval progress
   const startProgressInterval = () => {
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
@@ -230,16 +231,15 @@ const StoriesCarousel = ({
       return;
     }
 
-    // Hitung elapsed time berdasarkan current progress
     const elapsedMs = (progress / 100) * duration;
-    
+
     progressStartTimeRef.current = Date.now() - elapsedMs;
     elapsedTimeRef.current = elapsedMs;
 
     progressIntervalRef.current = setInterval(() => {
       const elapsed = Date.now() - progressStartTimeRef.current;
       const newProgress = Math.min((elapsed / duration) * 100, 100);
-      
+
       setProgress(newProgress);
       elapsedTimeRef.current = elapsed;
 
@@ -249,7 +249,6 @@ const StoriesCarousel = ({
     }, 50);
   };
 
-  // Fungsi untuk menghentikan interval progress
   const stopProgressInterval = () => {
     if (progressIntervalRef.current) {
       clearInterval(progressIntervalRef.current);
@@ -260,18 +259,18 @@ const StoriesCarousel = ({
   useEffect(() => {
     if (!currentStory || isLoading) return;
 
-    // Tunggu video siap untuk video stories
     if (currentStory?.mediaType === "video" && !videoReady) {
       return;
     }
 
     if (isPaused) {
       stopProgressInterval();
-      
-      // Update progress berdasarkan waktu video saat ini (untuk video)
+
       if (currentStory?.mediaType === "video" && videoRef.current) {
         const newProgress = calculateProgressFromVideoTime();
-        elapsedTimeRef.current = (newProgress / 100) * (currentStory?.mediaType === "video" ? videoDuration : 5000);
+        elapsedTimeRef.current =
+          (newProgress / 100) *
+          (currentStory?.mediaType === "video" ? videoDuration : 5000);
       }
     } else {
       startProgressInterval();
@@ -280,7 +279,14 @@ const StoriesCarousel = ({
     return () => {
       stopProgressInterval();
     };
-  }, [currentStoryIndex, currentUserIndex, isPaused, isLoading, videoDuration, videoReady]);
+  }, [
+    currentStoryIndex,
+    currentUserIndex,
+    isPaused,
+    isLoading,
+    videoDuration,
+    videoReady,
+  ]);
 
   useEffect(() => {
     setProgress(0);
@@ -295,9 +301,7 @@ const StoriesCarousel = ({
     setViewersList([]);
     setIsPaused(false);
     lastToggleTimeRef.current = 0;
-    // Reset video time saat story berubah
     lastVideoTimeRef.current = 0;
-    // Reset progress timing
     progressStartTimeRef.current = 0;
     elapsedTimeRef.current = 0;
   }, [currentStory]);
@@ -310,7 +314,6 @@ const StoriesCarousel = ({
 
   useEffect(() => {
     if (videoRef.current && currentStory?.mediaType === "video") {
-      // Reset video time ke waktu terakhir yang disimpan
       videoRef.current.currentTime = lastVideoTimeRef.current || 0;
 
       // Setup audio
@@ -319,13 +322,11 @@ const StoriesCarousel = ({
       if (!isPaused) {
         const playVideo = async () => {
           try {
-            // Attempt to play with sound
             await videoRef.current.play();
           } catch (error) {
             console.log("Video play error:", error.message);
-            
-            // If autoplay with sound fails, try with muted
-            if (error.name === 'NotAllowedError') {
+
+            if (error.name === "NotAllowedError") {
               videoRef.current.muted = true;
               try {
                 await videoRef.current.play();
@@ -336,7 +337,6 @@ const StoriesCarousel = ({
           }
         };
 
-        // Tunggu sedikit untuk memastikan video siap
         setTimeout(() => {
           if (videoRef.current) {
             playVideo();
@@ -348,19 +348,18 @@ const StoriesCarousel = ({
     }
   }, [isPaused, currentStory]);
 
-  // Handle video ready state
   useEffect(() => {
     if (currentStory?.mediaType === "video" && videoRef.current) {
       const video = videoRef.current;
-      
+
       const handleCanPlay = () => {
         setVideoReady(true);
       };
 
-      video.addEventListener('canplay', handleCanPlay);
-      
+      video.addEventListener("canplay", handleCanPlay);
+
       return () => {
-        video.removeEventListener('canplay', handleCanPlay);
+        video.removeEventListener("canplay", handleCanPlay);
       };
     }
   }, [currentStory]);
@@ -381,7 +380,6 @@ const StoriesCarousel = ({
       }
       setIsTransitioning(false);
       setShowOptions(false);
-      // Reset last video time saat pindah story
       lastVideoTimeRef.current = 0;
     }, 100);
   };
@@ -402,7 +400,6 @@ const StoriesCarousel = ({
       }
       setIsTransitioning(false);
       setShowOptions(false);
-      // Reset last video time saat pindah story
       lastVideoTimeRef.current = 0;
     }, 100);
   };
@@ -431,23 +428,19 @@ const StoriesCarousel = ({
           // Simpan waktu video saat pause
           lastVideoTimeRef.current = videoRef.current.currentTime;
           videoRef.current.pause();
-          
-          // Update progress berdasarkan waktu video
+
           calculateProgressFromVideoTime();
         } else {
-          // Set waktu video ke waktu terakhir yang disimpan
           if (lastVideoTimeRef.current > 0) {
             videoRef.current.currentTime = lastVideoTimeRef.current;
           }
           videoRef.current.play().catch((err) => {
             console.error("Manual play error:", err);
           });
-          
-          // Mulai progress interval dengan progress yang benar
+
           startProgressInterval();
         }
       } else {
-        // Untuk image, langsung toggle pause state
         if (!newState) {
           startProgressInterval();
         } else {
@@ -468,7 +461,6 @@ const StoriesCarousel = ({
   };
 
   const handleVideoEnd = () => {
-    // Reset video time saat video selesai
     lastVideoTimeRef.current = 0;
     goToNextStory();
   };

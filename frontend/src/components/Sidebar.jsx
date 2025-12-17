@@ -73,7 +73,7 @@ const Sidebar = () => {
           }`}
         >
           <ListIcon className="size-5 opacity-70" />
-          <span>View All</span>
+          <span>View All Post</span>
         </Link>
 
         {/* NOTIFICATIONS */}

@@ -89,6 +89,14 @@ const HomePage = () => {
     queryKey: ["recommended-users", userRole],
     queryFn: getRecommendedUsers,
     enabled: !!userRole,
+    onSuccess: (data) => {
+      console.log("Recommended Users Data:", data);
+      console.log("User Role:", userRole);
+      console.log("Allowed Roles:", getVisibleRoles(userRole));
+    },
+    onError: (error) => {
+      console.error("Error fetching recommended users:", error);
+    },
   });
 
   const { data: outgoingFriendsReqs } = useQuery({
@@ -138,9 +146,20 @@ const HomePage = () => {
 
   const allowedRoles = getVisibleRoles(userRole);
 
-  const filteredRecommendedUsers = recommendedUsers.filter(
-    (user) => allowedRoles.includes(user.role) && user._id !== authUser?._id
-  );
+  const filteredRecommendedUsers = recommendedUsers.filter((user) => {
+    const isAllowedRole = allowedRoles.includes(user.role);
+    const isNotCurrentUser = user._id !== authUser?._id;
+    const isActive = user.isActive !== false;
+
+    console.log(`User ${user.fullName} (${user.role}):`, {
+      isAllowedRole,
+      isNotCurrentUser,
+      isActive,
+      allowedRoles,
+    });
+
+    return isAllowedRole && isNotCurrentUser && isActive;
+  });
 
   const shuffledRecommendedUsers = filteredRecommendedUsers
     .sort(() => 0.5 - Math.random())
@@ -575,6 +594,10 @@ const HomePage = () => {
                         : "Connect with clients you collaborate with"}
                     </p>
                   </div>
+                    <Link to="/network" className="btn btn-outline btn-xs">
+                      <UsersIcon className="size-4 mr-1" />
+                      View All
+                    </Link>
                 </div>
 
                 {loadingUsers ? (

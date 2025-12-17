@@ -15,6 +15,16 @@ export const logout = async () => {
   return response.data;
 };
 
+export const getUserById = async (userId) => {
+  const res = await axiosInstance.get(`/users/${userId}`);
+  return res.data;
+};
+
+export async function getAllUsers() {
+  const response = await axiosInstance.get("/users/all");
+  return response.data;
+}
+
 export const getAuthUser = async () => {
   try {
     const res = await axiosInstance.get("/auth/me");

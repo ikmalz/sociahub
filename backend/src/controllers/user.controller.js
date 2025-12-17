@@ -6,15 +6,45 @@ export async function getRecommendedUsers(req, res) {
     const currentUserId = req.user.id;
     const currentUser = req.user;
 
+    const friendRequests = await FriendRequest.find({
+      $or: [
+        { sender: currentUserId, status: "accepted" },
+        { recipient: currentUserId, status: "accepted" }
+      ]
+    });
+
+    const friendIds = friendRequests.map(request => 
+      request.sender.toString() === currentUserId 
+        ? request.recipient.toString() 
+        : request.sender.toString()
+    );
+
+    const allFriendIds = [...currentUser.friends.map(id => id.toString()), ...friendIds];
+    const uniqueFriendIds = [...new Set(allFriendIds)];
+
+    const pendingRequests = await FriendRequest.find({
+      $or: [
+        { sender: currentUserId, status: "pending" },
+        { recipient: currentUserId, status: "pending" }
+      ]
+    });
+
+    const pendingIds = pendingRequests.map(request => 
+      request.sender.toString() === currentUserId 
+        ? request.recipient.toString() 
+        : request.sender.toString()
+    );
+
     const recommendedUsers = await User.find({
       $and: [
         { _id: { $ne: currentUserId } },
-        { _id: { $nin: currentUser.friends } },
+        { _id: { $nin: uniqueFriendIds } }, 
+        { _id: { $nin: pendingIds } }, 
         { isOnBoarded: true },
         { isActive: true },
         { approvalStatus: "approved" },
       ],
-    });
+    }).select("-password -refreshToken");
 
     res.status(200).json(recommendedUsers);
   } catch (error) {
@@ -22,7 +52,6 @@ export async function getRecommendedUsers(req, res) {
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
-
 export async function getMyFriends(req, res) {
   try {
     const user = await User.findById(req.user.id).select("friends").populate({
@@ -166,6 +195,25 @@ export async function getOutgoingFriendReqs(req, res) {
     res.status(200).json(outgoingRequests);
   } catch (error) {
     console.log("Error in getOutgoingFriendReqs controller", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+export async function getUserById(req, res) {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id).select(
+      "fullName profilePic department position email phoneNumber location bio expertise friends"
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json(user);
+  } catch (error) {
+    console.error("Error in getUserById controller", error.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 }

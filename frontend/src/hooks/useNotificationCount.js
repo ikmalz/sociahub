@@ -7,10 +7,12 @@ const useNotificationCount = () => {
     queryFn: getFriendRequests,
   });
 
-  const incoming = data?.incomingReqs?.length || 0;
-  const accepted = data?.acceptedReqs?.length || 0;
+  const unreadIncoming = data?.incomingReqs?.length || 0;
+  const unreadAccepted = data?.acceptedReqs?.filter(
+    (n) => !localStorage.getItem(`notif-read-${n._id}`)
+  ).length || 0;
 
-  return incoming + accepted;
+  return unreadIncoming + unreadAccepted;
 };
 
 export default useNotificationCount;

@@ -20,6 +20,8 @@ import MyPostsPage from "./pages/MyPostsPage.jsx";
 import AdminLayout from "./components/AdminLayout.jsx";
 import AdminDashboard from "./pages/AdminDashboard.jsx";
 import WaitingApproval from "./pages/WaitingApproval.jsx";
+import UserProfilePage from "./pages/UserProfilePage.jsx";
+import NetworkPage from "./pages/NetworkPage.jsx";
 
 const App = () => {
   const { isLoading, authUser } = useAuthUser();
@@ -28,15 +30,16 @@ const App = () => {
   if (isLoading) return <PageLoader />;
 
   const isAuthenticated = Boolean(authUser);
-  const isApproved = authUser?.isActive && authUser?.approvalStatus === "approved";
+  const isApproved =
+    authUser?.isActive && authUser?.approvalStatus === "approved";
   const isOnBoarded = authUser?.isOnBoarded;
   const isAdmin = authUser?.role === "admin";
 
-  const ProtectedRoute = ({ 
-    element, 
-    requireApproved = true, 
+  const ProtectedRoute = ({
+    element,
+    requireApproved = true,
     requireOnboarded = true,
-    requireAdmin = false 
+    requireAdmin = false,
   }) => {
     if (!isAuthenticated) {
       return <Navigate to="/login" />;
@@ -78,7 +81,9 @@ const App = () => {
               <Navigate
                 to={
                   isApproved
-                    ? (isOnBoarded ? "/" : "/onboarding")
+                    ? isOnBoarded
+                      ? "/"
+                      : "/onboarding"
                     : "/waiting-approval"
                 }
               />
@@ -95,7 +100,9 @@ const App = () => {
               <Navigate
                 to={
                   isApproved
-                    ? (isOnBoarded ? "/" : "/onboarding")
+                    ? isOnBoarded
+                      ? "/"
+                      : "/onboarding"
                     : "/waiting-approval"
                 }
               />
@@ -158,11 +165,7 @@ const App = () => {
 
         <Route
           path="/call/:id"
-          element={
-            <ProtectedRoute
-              element={<CallPage />}
-            />
-          }
+          element={<ProtectedRoute element={<CallPage />} />}
         />
 
         <Route
@@ -212,6 +215,32 @@ const App = () => {
                 <PostDetailLayout>
                   <PostDetailPage />
                 </PostDetailLayout>
+              }
+            />
+          }
+        />
+
+        <Route
+          path="/profile/:userId"
+          element={
+            <ProtectedRoute
+              element={
+                <Layout showSidebar={true}>
+                  <UserProfilePage />
+                </Layout>
+              }
+            />
+          }
+        />
+
+        <Route
+          path="/network"
+          element={
+            <ProtectedRoute
+              element={
+                <Layout showSidebar={true}>
+                  <NetworkPage />
+                </Layout>
               }
             />
           }
