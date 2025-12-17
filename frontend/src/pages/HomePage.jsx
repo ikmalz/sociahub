@@ -37,6 +37,7 @@ import StoriesPreview from "../components/StoriesPreview";
 import StoryCreateModal from "../components/StoryCreateModal";
 import StoriesCarousel from "../components/StoriesCarousel";
 import useAuthUser from "../hooks/useAuthUser";
+import { getVisibleRoles } from "../utils/roleFilter";
 
 const getDepartmentIcon = (department) => {
   if (!department) return "👤";
@@ -68,8 +69,10 @@ const HomePage = () => {
   const queryClient = useQueryClient();
   const { authUser } = useAuthUser();
 
-  const isClient = authUser?.role === "client";
-  const isEmployee = authUser?.role === "employee";
+  const userRole = authUser?.role;
+  const isClient = userRole === "client";
+  const isEmployee = userRole === "employee";
+  const isAdmin = userRole === "admin";
 
   const [outgoingRequestsIds, setOutgoingRequestsIds] = useState(new Set());
   const [showCreateStory, setShowCreateStory] = useState(false);
@@ -83,9 +86,9 @@ const HomePage = () => {
   });
 
   const { data: recommendedUsers = [], isLoading: loadingUsers } = useQuery({
-    queryKey: ["users", isClient ? "client-contacts" : "recommended"],
-    queryFn: isClient ? getClientContacts : getRecommendedUsers,
-    enabled: !!authUser?.role && !isClient,
+    queryKey: ["recommended-users", userRole],
+    queryFn: getRecommendedUsers,
+    enabled: !!userRole,
   });
 
   const { data: outgoingFriendsReqs } = useQuery({
@@ -106,7 +109,7 @@ const HomePage = () => {
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
     queryFn: getProjects,
-    enabled: false, 
+    enabled: false,
   });
 
   const { mutate: sendRequestMutation, isPending } = useMutation({
@@ -133,10 +136,11 @@ const HomePage = () => {
     setShowStories(true);
   };
 
-  // Filter kontak untuk client: hanya employee dari perusahaan yang sama
-  const filteredRecommendedUsers = isClient
-    ? [...recommendedUsers].filter((user) => user.role === "employee")
-    : [...recommendedUsers].filter((user) => user.role !== "client");
+  const allowedRoles = getVisibleRoles(userRole);
+
+  const filteredRecommendedUsers = recommendedUsers.filter(
+    (user) => allowedRoles.includes(user.role) && user._id !== authUser?._id
+  );
 
   const shuffledRecommendedUsers = filteredRecommendedUsers
     .sort(() => 0.5 - Math.random())
@@ -556,12 +560,19 @@ const HomePage = () => {
                   </div>
                   <div>
                     <h2 className="text-lg font-bold">
-                      {isClient ? "Team Members" : "Suggested Colleagues"}
+                      {isAdmin
+                        ? "All Users"
+                        : isClient
+                        ? "Team Members"
+                        : "Suggested Colleagues"}
                     </h2>
+
                     <p className="text-sm opacity-70">
-                      {isClient
-                        ? "Connect with project team members"
-                        : "Connect with team members in your department"}
+                      {isAdmin
+                        ? "Manage and connect with all users"
+                        : isClient
+                        ? "Connect with employees working on your projects"
+                        : "Connect with clients you collaborate with"}
                     </p>
                   </div>
                 </div>

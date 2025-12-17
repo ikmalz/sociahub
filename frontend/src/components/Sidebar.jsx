@@ -10,11 +10,13 @@ import {
   ListIcon,
   ShieldIcon,
 } from "lucide-react";
+import useNotificationCount from "../hooks/useNotificationCount";
 
 const Sidebar = () => {
   const { authUser } = useAuthUser();
   const location = useLocation();
   const currentPath = location.pathname;
+  const notificationCount = useNotificationCount();
 
   return (
     <aside className="w-64 bg-base-200 border-r border-base-300 hidden lg:flex flex-col h-screen sticky top-0">
@@ -77,11 +79,20 @@ const Sidebar = () => {
         {/* NOTIFICATIONS */}
         <Link
           to="/notifications"
-          className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case ${
+          className={`btn btn-ghost justify-start w-full gap-3 px-3 normal-case relative ${
             currentPath === "/notifications" ? "btn-active" : ""
           }`}
         >
-          <BellIcon className="size-5 opacity-70" />
+          <div className="relative">
+            <BellIcon className="size-5 opacity-70" />
+
+            {notificationCount > 0 && (
+              <span className="badge badge-error badge-xs absolute -top-1.5 -right-2">
+                {notificationCount}
+              </span>
+            )}
+          </div>
+
           <span>Notifications</span>
         </Link>
 
