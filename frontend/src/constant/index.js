@@ -197,33 +197,37 @@
 // };
 
 export const DEPARTMENTS = [
-  "Human Resources",
-  "Finance",
+  "Web Development",
+  "Mobile Development",
+  "UI/UX Design",
+  "Project Management",
+  "Quality Assurance",
+  "DevOps",
+  "Business Analysis",
   "Marketing",
   "Sales",
-  "IT",
-  "Operations",
-  "Customer Service",
-  "R&D",
-  "Procurement",
-  "Logistics",
-  "Administration",
-  "Legal",
-  "Executive"
+  "Customer Support",
+  "Human Resources",
+  "Finance",
+  "Operations"
 ];
 
 export const POSITIONS = [
-  "Staff",
-  "Senior Staff",
-  "Supervisor",
-  "Manager",
-  "Senior Manager",
-  "General Manager",
+  "Junior Developer",
+  "Senior Developer",
+  "Team Lead",
+  "Project Manager",
+  "UI/UX Designer",
+  "QA Engineer",
+  "DevOps Engineer",
+  "Business Analyst",
+  "Product Owner",
+  "Scrum Master",
+  "Solution Architect",
+  "Technical Lead",
   "Director",
-  "VP",
-  "CEO"
+  "Executive"
 ];
-
 export const COMPANY_INFO = {
   name: "Ciptadra softIndo",
   logo: "/ip.png",
@@ -269,6 +273,29 @@ export const COMPANY_POSITIONS = [
   "Executive Vice President",
   "Chief Officer",
   "CEO"
+];
+
+// Untuk INSTITUTION TYPES (Client)
+export const INSTITUTION_TYPES = [
+  "Ministry",
+  "Agency",
+  "Department",
+  "Regional Government",
+  "State-Owned Enterprise",
+  "Public Service",
+  "Educational Institution",
+  "Healthcare Institution",
+  "Other Government Entity"
+];
+
+// Untuk GOVERNMENT LEVELS
+export const GOVERNMENT_LEVELS = [
+  "National/Central",
+  "Provincial",
+  "City/Municipal",
+  "District",
+  "Village",
+  "Cross-Regional"
 ];
 
 export default {

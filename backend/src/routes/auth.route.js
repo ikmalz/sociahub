@@ -6,7 +6,7 @@ import {
   signup,
   updateProfile,
 } from "../controllers/auth.controller.js";
-import { protectRoute } from "../middleware/auth.middleware.js";
+import { protectRoute } from "../middleware/auth.middleware.js"; // Hapus requireActive
 
 const router = express.Router();
 

@@ -1,5 +1,4 @@
-// App.jsx - sudah benar seperti yang Anda berikan
-import React, { useState } from "react";
+import React from "react";
 import { Navigate, Route, Routes } from "react-router";
 import HomePage from "./pages/HomePage.jsx";
 import SignUpPage from "./pages/SignUpPage.jsx";
@@ -7,7 +6,7 @@ import LoginPage from "./pages/LoginPage.jsx";
 import NotificationsPage from "./pages/NotificationsPage.jsx";
 import CallPage from "./pages/CallPage.jsx";
 import ChatPage from "./pages/ChatPage.jsx";
-import PostsPage from "./pages/PostsPage.jsx"; // Pastikan import ini benar
+import PostsPage from "./pages/PostsPage.jsx";
 import { Toaster } from "react-hot-toast";
 import PageLoader from "./components/PageLoader.jsx";
 import OnBoardingPage from "./pages/OnboardingPage.jsx";
@@ -18,162 +17,250 @@ import FriendsPage from "./pages/FriendsPage.jsx";
 import PostDetailPage from "./pages/PostDetailPage.jsx";
 import PostDetailLayout from "./components/PostDetailLayout.jsx";
 import MyPostsPage from "./pages/MyPostsPage.jsx";
+import AdminLayout from "./components/AdminLayout.jsx";
+import AdminDashboard from "./pages/AdminDashboard.jsx";
+import WaitingApproval from "./pages/WaitingApproval.jsx";
 
 const App = () => {
   const { isLoading, authUser } = useAuthUser();
   const { theme } = useThemeStore();
 
-  const isAutheticanted = Boolean(authUser);
-  const isOnBoarded = authUser?.isOnBoarded;
-
   if (isLoading) return <PageLoader />;
 
-  return (
-    <div className="h-screen " data-theme={theme}>
-      <Routes>
-        <Route
-          path="/"
-          element={
-            isAutheticanted && isOnBoarded ? (
-              <Layout showSidebar={true}>
-                <HomePage />
-              </Layout>
-            ) : (
-              <Navigate to={!isAutheticanted ? "/login" : "/onboarding"} />
-            )
-          }
+  const isAuthenticated = Boolean(authUser);
+  const isApproved = authUser?.isActive && authUser?.approvalStatus === "approved";
+  const isOnBoarded = authUser?.isOnBoarded;
+  const isAdmin = authUser?.role === "admin";
+
+  const ProtectedRoute = ({ 
+    element, 
+    requireApproved = true, 
+    requireOnboarded = true,
+    requireAdmin = false 
+  }) => {
+    if (!isAuthenticated) {
+      return <Navigate to="/login" />;
+    }
+
+    if (requireApproved && !isApproved) {
+      return (
+        <Navigate
+          to="/waiting-approval"
+          state={{
+            email: authUser.email,
+            fullName: authUser.fullName,
+          }}
         />
+      );
+    }
+
+    if (requireAdmin && !isAdmin) {
+      return <Navigate to="/" />;
+    }
+
+    if (requireOnboarded && !isOnBoarded) {
+      return <Navigate to="/onboarding" />;
+    }
+
+    return element;
+  };
+
+  return (
+    <div className="h-screen" data-theme={theme}>
+      <Routes>
+        {/* PUBLIC ROUTES */}
         <Route
           path="/signup"
           element={
-            !isAutheticanted ? (
+            !isAuthenticated ? (
               <SignUpPage />
             ) : (
-              <Navigate to={isOnBoarded ? "/" : "/onboarding"} />
+              <Navigate
+                to={
+                  isApproved
+                    ? (isOnBoarded ? "/" : "/onboarding")
+                    : "/waiting-approval"
+                }
+              />
             )
           }
         />
+
         <Route
           path="/login"
           element={
-            !isAutheticanted ? (
+            !isAuthenticated ? (
               <LoginPage />
             ) : (
-              <Navigate to={isOnBoarded ? "/" : "/onboarding"} />
+              <Navigate
+                to={
+                  isApproved
+                    ? (isOnBoarded ? "/" : "/onboarding")
+                    : "/waiting-approval"
+                }
+              />
             )
           }
         />
+
+        <Route path="/waiting-approval" element={<WaitingApproval />} />
+
+        {/* ROOT ROUTE */}
         <Route
-          path="/notifications"
+          path="/"
           element={
-            isAutheticanted && isOnBoarded ? (
-              <Layout showSidebar={true}>
-                <NotificationsPage />
-              </Layout>
-            ) : (
-              <Navigate to={!isAutheticanted ? "/login" : "/onboarding"} />
-            )
+            <ProtectedRoute
+              element={
+                <Layout showSidebar={true}>
+                  <HomePage />
+                </Layout>
+              }
+            />
           }
         />
-        <Route
-          path="/call/:id"
-          element={
-            isAutheticanted && isOnBoarded ? (
-              <CallPage />
-            ) : (
-              <Navigate to={!isAutheticanted ? "/login" : "/onboarding"} />
-            )
-          }
-        />
-        <Route
-          path="/chat/:id"
-          element={
-            isAutheticanted && isOnBoarded ? (
-              <Layout showSidebar={false}>
-                <ChatPage />
-              </Layout>
-            ) : (
-              <Navigate to={!isAutheticanted ? "/login" : "/onboarding"} />
-            )
-          }
-        />
+
+        {/* ONBOARDING ROUTE */}
         <Route
           path="/onboarding"
           element={
-            isAutheticanted ? (
+            isAuthenticated && isApproved ? (
               !isOnBoarded ? (
                 <OnBoardingPage />
               ) : (
                 <Navigate to="/" />
               )
-            ) : (
+            ) : !isAuthenticated ? (
               <Navigate to="/login" />
-            )
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            isAutheticanted ? (
-              <Layout showSidebar={true}>
-                <OnBoardingPage profileMode={true} />
-              </Layout>
-            ) : (
-              <Navigate to="/login" />
-            )
-          }
-        />
-        <Route
-          path="/friends"
-          element={
-            isAutheticanted && isOnBoarded ? (
-              <Layout showSidebar={true}>
-                <FriendsPage />
-              </Layout>
-            ) : (
-              <Navigate to={!isAutheticanted ? "/login" : "/onboarding"} />
-            )
-          }
-        />
-        <Route
-          path="/post/:postId"
-          element={
-            isAutheticanted && isOnBoarded ? (
-              <PostDetailLayout>
-                <PostDetailPage />
-              </PostDetailLayout>
-            ) : (
-              <Navigate to="/login" />
-            )
+            ) : !isApproved ? (
+              <Navigate
+                to="/waiting-approval"
+                state={{
+                  email: authUser.email,
+                  fullName: authUser.fullName,
+                }}
+              />
+            ) : null
           }
         />
 
-        {/* ROUTE UNTUK VIEW ALL POSTS */}
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute
+              element={
+                <Layout showSidebar={true}>
+                  <NotificationsPage />
+                </Layout>
+              }
+            />
+          }
+        />
+
+        <Route
+          path="/call/:id"
+          element={
+            <ProtectedRoute
+              element={<CallPage />}
+            />
+          }
+        />
+
+        <Route
+          path="/chat/:id"
+          element={
+            <ProtectedRoute
+              element={
+                <Layout showSidebar={false}>
+                  <ChatPage />
+                </Layout>
+              }
+            />
+          }
+        />
+
         <Route
           path="/posts"
           element={
-            isAutheticanted && isOnBoarded ? (
-              <Layout showSidebar={true}>
-                <PostsPage />
-              </Layout>
-            ) : (
-              <Navigate to={!isAutheticanted ? "/login" : "/onboarding"} />
-            )
+            <ProtectedRoute
+              element={
+                <Layout showSidebar={true}>
+                  <PostsPage />
+                </Layout>
+              }
+            />
           }
         />
 
         <Route
           path="/my-posts"
           element={
-            isAutheticanted && isOnBoarded ? (
-              <Layout showSidebar={true}>
-                <MyPostsPage />
-              </Layout>
-            ) : (
-              <Navigate to={!isAutheticanted ? "/login" : "/onboarding"} />
-            )
+            <ProtectedRoute
+              element={
+                <Layout showSidebar={true}>
+                  <MyPostsPage />
+                </Layout>
+              }
+            />
           }
         />
+
+        <Route
+          path="/post/:postId"
+          element={
+            <ProtectedRoute
+              element={
+                <PostDetailLayout>
+                  <PostDetailPage />
+                </PostDetailLayout>
+              }
+            />
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute
+              element={
+                <Layout showSidebar={true}>
+                  <OnBoardingPage profileMode={true} />
+                </Layout>
+              }
+              requireOnboarded={false}
+            />
+          }
+        />
+
+        <Route
+          path="/friends"
+          element={
+            <ProtectedRoute
+              element={
+                <Layout showSidebar={true}>
+                  <FriendsPage />
+                </Layout>
+              }
+            />
+          }
+        />
+
+        {/* ADMIN ROUTES - HARUS ADMIN */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute
+              element={
+                <AdminLayout>
+                  <AdminDashboard />
+                </AdminLayout>
+              }
+              requireAdmin={true}
+            />
+          }
+        />
+
+        {/* FALLBACK ROUTE */}
+        <Route path="*" element={<Navigate to="/" />} />
       </Routes>
 
       <Toaster />

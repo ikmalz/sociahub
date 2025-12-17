@@ -7,6 +7,8 @@ import {
   getTimelineStories,
   getUserFriends,
   sendFriendRequest,
+  getClientContacts,
+  getProjects,
 } from "../lib/api";
 import { Link } from "react-router";
 import {
@@ -20,6 +22,11 @@ import {
   Clock,
   User,
   BuildingIcon,
+  Briefcase,
+  FileText,
+  Landmark,
+  Calendar,
+  Target,
 } from "lucide-react";
 import FriendCard from "../components/FriendCard";
 import NoFriendsFound from "../components/NoFriendsFound";
@@ -29,6 +36,7 @@ import PostCard from "../components/PostCard";
 import StoriesPreview from "../components/StoriesPreview";
 import StoryCreateModal from "../components/StoryCreateModal";
 import StoriesCarousel from "../components/StoriesCarousel";
+import useAuthUser from "../hooks/useAuthUser";
 
 const getDepartmentIcon = (department) => {
   if (!department) return "👤";
@@ -58,6 +66,11 @@ const getDepartmentIcon = (department) => {
 
 const HomePage = () => {
   const queryClient = useQueryClient();
+  const { authUser } = useAuthUser();
+
+  const isClient = authUser?.role === "client";
+  const isEmployee = authUser?.role === "employee";
+
   const [outgoingRequestsIds, setOutgoingRequestsIds] = useState(new Set());
   const [showCreateStory, setShowCreateStory] = useState(false);
   const [showStories, setShowStories] = useState(false);
@@ -70,8 +83,9 @@ const HomePage = () => {
   });
 
   const { data: recommendedUsers = [], isLoading: loadingUsers } = useQuery({
-    queryKey: ["users"],
-    queryFn: getRecommendedUsers,
+    queryKey: ["users", isClient ? "client-contacts" : "recommended"],
+    queryFn: isClient ? getClientContacts : getRecommendedUsers,
+    enabled: !!authUser?.role && !isClient,
   });
 
   const { data: outgoingFriendsReqs } = useQuery({
@@ -87,6 +101,12 @@ const HomePage = () => {
   const { data: storiesData } = useQuery({
     queryKey: ["stories"],
     queryFn: getTimelineStories,
+  });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"],
+    queryFn: getProjects,
+    enabled: false, 
   });
 
   const { mutate: sendRequestMutation, isPending } = useMutation({
@@ -113,12 +133,14 @@ const HomePage = () => {
     setShowStories(true);
   };
 
-  const shuffledRecommendedUsers = [...recommendedUsers]
+  // Filter kontak untuk client: hanya employee dari perusahaan yang sama
+  const filteredRecommendedUsers = isClient
+    ? [...recommendedUsers].filter((user) => user.role === "employee")
+    : [...recommendedUsers].filter((user) => user.role !== "client");
+
+  const shuffledRecommendedUsers = filteredRecommendedUsers
     .sort(() => 0.5 - Math.random())
     .slice(0, 2);
-
-  const currentUser = JSON.parse(localStorage.getItem("user"));
-  const currentUserId = currentUser?.user?._id || currentUser?._id;
 
   return (
     <div className="min-h-screen bg-base-200">
@@ -126,187 +148,318 @@ const HomePage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* MAIN CONTENT */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Welcome Header */}
-            <div className="bg-gradient-to-r from-primary to-secondary text-primary-content rounded-xl p-4 shadow-md">
+            {/* Welcome Header berdasarkan role */}
+            <div
+              className={`bg-gradient-to-r ${
+                isClient
+                  ? "from-primary/20 to-primary/10"
+                  : "from-primary to-secondary"
+              } ${
+                isClient ? "border-l-4 border-primary" : "text-primary-content"
+              } rounded-xl p-4 shadow-md`}
+            >
               <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-lg font-semibold mb-0.5">
-                    Welcome Back 👋
-                  </h1>
-                  <p className="text-sm opacity-85">
-                    Stay updated with company activities
+                  <div className="flex items-center gap-2 mb-1">
+                    {isClient ? (
+                      <Landmark className="size-5 text-primary" />
+                    ) : (
+                      <Briefcase className="size-5" />
+                    )}
+                    <h1 className="text-lg font-semibold">
+                      {isClient
+                        ? `Welcome, ${
+                            authUser?.institutionName || "Government Client"
+                          } 👋`
+                        : "Welcome Back 👋"}
+                    </h1>
+                  </div>
+                  <p
+                    className={`text-sm ${
+                      isClient ? "text-base-content" : "opacity-85"
+                    }`}
+                  >
+                    {isClient
+                      ? "Monitor your projects and collaborate with our team"
+                      : "Stay updated with company activities"}
                   </p>
                 </div>
-                <BuildingIcon className="size-8 opacity-80 hidden md:block" />
+                <BuildingIcon
+                  className={`size-8 ${
+                    isClient ? "text-primary/40" : "opacity-80"
+                  } hidden md:block`}
+                />
               </div>
             </div>
 
-            {/* Stories Preview - IMPROVED */}
-            <div className="card bg-base-100 shadow rounded-xl">
-              <div className="card-body p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
-                      <Camera className="size-3.5 text-base-100" />
+            {/* Stories Preview - HIDDEN untuk client */}
+            {!isClient && (
+              <div className="card bg-base-100 shadow rounded-xl">
+                <div className="card-body p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
+                        <Camera className="size-3.5 text-base-100" />
+                      </div>
+                      <div>
+                        <h2 className="text-sm font-semibold">Stories</h2>
+                        <p className="text-xs opacity-60">Latest moments</p>
+                      </div>
                     </div>
-                    <div>
-                      <h2 className="text-sm font-semibold">Stories</h2>
-                      <p className="text-xs opacity-60">Latest moments</p>
-                    </div>
-                  </div>
 
-                  <button
-                    onClick={() => setShowCreateStory(true)}
-                    className="btn btn-primary btn-xs"
-                  >
-                    <Camera className="size-3 mr-1" />
-                    Create Stories
-                  </button>
-                </div>
-
-                {stories.length === 0 ? (
-                  <div className="text-center py-6">
-                    <div className="w-16 h-16 mx-auto mb-3 bg-base-200 rounded-full flex items-center justify-center">
-                      <Camera className="size-6 opacity-40" />
-                    </div>
-                    <p className="text-sm opacity-70 mb-3">
-                      No stories from your friends yet
-                    </p>
                     <button
                       onClick={() => setShowCreateStory(true)}
-                      className="btn btn-outline btn-sm"
+                      className="btn btn-primary btn-xs"
                     >
-                      Be the first to share!
+                      <Camera className="size-3 mr-1" />
+                      Create Stories
                     </button>
                   </div>
-                ) : (
-                  <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin">
-                    {/* Create Story Card */}
-                    <div className="flex-shrink-0">
+
+                  {stories.length === 0 ? (
+                    <div className="text-center py-6">
+                      <div className="w-16 h-16 mx-auto mb-3 bg-base-200 rounded-full flex items-center justify-center">
+                        <Camera className="size-6 opacity-40" />
+                      </div>
+                      <p className="text-sm opacity-70 mb-3">
+                        No stories from your colleagues yet
+                      </p>
                       <button
                         onClick={() => setShowCreateStory(true)}
-                        className="flex flex-col items-center group"
+                        className="btn btn-outline btn-sm"
                       >
-                        <div className="relative mb-2">
-                          <div className="w-20 h-20 rounded-full border-2 border-dashed border-gray-300 group-hover:border-primary transition-colors flex items-center justify-center">
-                            <div className="w-16 h-16 rounded-full bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center">
-                              <Camera className="size-6 text-primary" />
-                            </div>
-                          </div>
-                          <div className="absolute bottom-0 right-0 w-6 h-6 bg-primary rounded-full flex items-center justify-center border-2 border-base-100">
-                            <span className="text-xs text-base-100 font-bold">
-                              +
-                            </span>
-                          </div>
-                        </div>
-                        <span className="text-xs font-medium">Add Story</span>
+                        Be the first to share!
                       </button>
                     </div>
-
-                    {/* Friends' Stories */}
-                    {stories.map((userStories, userIndex) => {
-                      const user = userStories.user;
-                      const userStoryCount = userStories.stories?.length || 0;
-                      const hasUnviewed = userStories.hasUnviewed || false;
-
-                      return (
-                        <div key={user._id} className="flex-shrink-0">
-                          <button
-                            onClick={() => handleOpenStories(userIndex, 0)}
-                            className="flex flex-col items-center group relative"
-                          >
-                            <div className="relative mb-2">
-                              <div
-                                className={`w-16 h-16 rounded-full p-0.5 ${
-                                  hasUnviewed
-                                    ? "bg-gradient-to-r from-primary to-secondary"
-                                    : "bg-gradient-to-r from-gray-300 to-gray-400"
-                                }`}
-                              >
-                                <div className="w-full h-full rounded-full overflow-hidden border border-base-100">
-                                  <img
-                                    src={
-                                      user.profilePic || "/default-avatar.png"
-                                    }
-                                    alt={user.fullName}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      e.target.src = "/default-avatar.png";
-                                    }}
-                                  />
-                                </div>
+                  ) : (
+                    <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin">
+                      {/* Create Story Card */}
+                      <div className="flex-shrink-0">
+                        <button
+                          onClick={() => setShowCreateStory(true)}
+                          className="flex flex-col items-center group"
+                        >
+                          <div className="relative mb-2">
+                            <div className="w-20 h-20 rounded-full border-2 border-dashed border-gray-300 group-hover:border-primary transition-colors flex items-center justify-center">
+                              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center">
+                                <Camera className="size-6 text-primary" />
                               </div>
-
-                              {userStoryCount > 0 && (
-                                <div className="absolute -top-1 -right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center border-2 border-base-100">
-                                  <span className="text-xs text-base-100 font-bold">
-                                    {userStoryCount}
-                                  </span>
-                                </div>
-                              )}
                             </div>
-                            <span className="text-[11px] font-medium truncate max-w-16">
-                              {user._id === currentUserId
-                                ? "You"
-                                : user.fullName}
-                            </span>
-
-                            {hasUnviewed && (
-                              <div className="absolute -top-1 -left-1 w-3 h-3 bg-primary rounded-full animate-pulse"></div>
-                            )}
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Stories Stats */}
-                {stories.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-base-300">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
-                        <UsersIcon className="size-4 opacity-70" />
-                        <span>
-                          {stories.length}{" "}
-                          {stories.length === 1 ? "friend has" : "friends have"}{" "}
-                          stories
-                        </span>
+                            <div className="absolute bottom-0 right-0 w-6 h-6 bg-primary rounded-full flex items-center justify-center border-2 border-base-100">
+                              <span className="text-xs text-base-100 font-bold">
+                                +
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-xs font-medium">Add Story</span>
+                        </button>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Clock className="size-4 opacity-70" />
-                        <span>24h remaining</span>
+
+                      {/* Colleagues' Stories */}
+                      {stories.map((userStories, userIndex) => {
+                        const user = userStories.user;
+                        const userStoryCount = userStories.stories?.length || 0;
+                        const hasUnviewed = userStories.hasUnviewed || false;
+
+                        return (
+                          <div key={user._id} className="flex-shrink-0">
+                            <button
+                              onClick={() => handleOpenStories(userIndex, 0)}
+                              className="flex flex-col items-center group relative"
+                            >
+                              <div className="relative mb-2">
+                                <div
+                                  className={`w-16 h-16 rounded-full p-0.5 ${
+                                    hasUnviewed
+                                      ? "bg-gradient-to-r from-primary to-secondary"
+                                      : "bg-gradient-to-r from-gray-300 to-gray-400"
+                                  }`}
+                                >
+                                  <div className="w-full h-full rounded-full overflow-hidden border border-base-100">
+                                    <img
+                                      src={
+                                        user.profilePic || "/default-avatar.png"
+                                      }
+                                      alt={user.fullName}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        e.target.src = "/default-avatar.png";
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+
+                                {userStoryCount > 0 && (
+                                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center border-2 border-base-100">
+                                    <span className="text-xs text-base-100 font-bold">
+                                      {userStoryCount}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                              <span className="text-[11px] font-medium truncate max-w-16">
+                                {user.fullName}
+                              </span>
+
+                              {hasUnviewed && (
+                                <div className="absolute -top-1 -left-1 w-3 h-3 bg-primary rounded-full animate-pulse"></div>
+                              )}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Stories Stats */}
+                  {stories.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-base-300">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <UsersIcon className="size-4 opacity-70" />
+                          <span>
+                            {stories.length}{" "}
+                            {stories.length === 1
+                              ? "colleague has"
+                              : "colleagues have"}{" "}
+                            stories
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Clock className="size-4 opacity-70" />
+                          <span>24h remaining</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Create Post */}
-            <div className="card bg-base-100 shadow rounded-xl">
-              <div className="card-body p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                    <MessageSquare className="size-4 text-primary-content" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-semibold">Create Post</h2>
-                    <p className="text-xs opacity-60">Share something</p>
-                  </div>
+                  )}
                 </div>
-
-                <PostForm />
               </div>
-            </div>
+            )}
 
-            {/* Timeline */}
+            {/* Create Post - HIDDEN untuk client */}
+            {!isClient && (
+              <div className="card bg-base-100 shadow rounded-xl">
+                <div className="card-body p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                      <MessageSquare className="size-4 text-primary-content" />
+                    </div>
+                    <div>
+                      <h2 className="text-sm font-semibold">Create Post</h2>
+                      <p className="text-xs opacity-60">
+                        Share updates with the team
+                      </p>
+                    </div>
+                  </div>
+
+                  <PostForm />
+                </div>
+              </div>
+            )}
+
+            {/* Untuk Client: Project Overview */}
+            {isClient && (
+              <div className="card bg-base-100 shadow rounded-xl">
+                <div className="card-body p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Target className="size-5 text-primary" />
+                      </div>
+                      <div>
+                        <h2 className="text-base font-semibold">
+                          Active Projects
+                        </h2>
+                        <p className="text-xs opacity-60">
+                          Monitor your ongoing projects
+                        </p>
+                      </div>
+                    </div>
+                    <span className="badge badge-primary badge-sm">
+                      {projects.length || 0}
+                    </span>
+                  </div>
+
+                  {projects.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 mx-auto mb-4 bg-base-200 rounded-full flex items-center justify-center">
+                        <FileText className="size-8 opacity-40" />
+                      </div>
+                      <h3 className="text-lg font-semibold mb-2">
+                        No active projects
+                      </h3>
+                      <p className="opacity-70 max-w-sm mx-auto mb-4">
+                        Start a new project with our team
+                      </p>
+                      <button className="btn btn-primary btn-sm">
+                        <Briefcase className="size-4 mr-2" />
+                        Start New Project
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {projects.slice(0, 3).map((project) => (
+                        <div
+                          key={project._id}
+                          className="border border-base-300 rounded-lg p-4 hover:border-primary/30 transition-colors"
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <h4 className="font-medium">{project.name}</h4>
+                            <span
+                              className={`badge badge-sm ${
+                                project.status === "active"
+                                  ? "badge-success"
+                                  : "badge-warning"
+                              }`}
+                            >
+                              {project.status}
+                            </span>
+                          </div>
+                          <p className="text-sm opacity-70 mb-3 line-clamp-2">
+                            {project.description}
+                          </p>
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="size-3 opacity-60" />
+                              <span>
+                                Due:{" "}
+                                {new Date(project.dueDate).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <UsersIcon className="size-3 opacity-60" />
+                              <span>{project.team?.length || 0} members</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="text-center pt-2">
+                        <Link
+                          to="/projects"
+                          className="text-primary text-sm hover:underline"
+                        >
+                          View all projects →
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Timeline - Tampilkan semua untuk employee, hanya post terkait untuk client */}
             <div className="card bg-base-100 shadow rounded-xl">
               <div className="card-body p-4">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h2 className="text-base font-semibold">Recent Posts</h2>
-                    <p className="text-xs opacity-60">Latest from network</p>
+                    <h2 className="text-base font-semibold">
+                      {isClient ? "Project Updates" : "Recent Posts"}
+                    </h2>
+                    <p className="text-xs opacity-60">
+                      {isClient
+                        ? "Latest updates from your projects"
+                        : "Latest from the team"}
+                    </p>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -329,9 +482,13 @@ const HomePage = () => {
                     <div className="w-20 h-20 mx-auto mb-4 bg-base-200 rounded-full flex items-center justify-center">
                       <MessageSquare className="size-10 opacity-40" />
                     </div>
-                    <h3 className="text-lg font-semibold mb-2">No posts yet</h3>
+                    <h3 className="text-lg font-semibold mb-2">
+                      {isClient ? "No project updates yet" : "No posts yet"}
+                    </h3>
                     <p className="opacity-70 max-w-sm mx-auto">
-                      Be the first to share your language learning journey!
+                      {isClient
+                        ? "Check back later for updates from the team"
+                        : "Be the first to share updates with the team!"}
                     </p>
                   </div>
                 ) : (
@@ -352,14 +509,18 @@ const HomePage = () => {
 
           {/* SIDEBAR */}
           <div className="space-y-6">
-            {/* FRIENDS LIST */}
+            {/* FRIENDS/CONTACTS LIST */}
             <div className="card bg-base-100 shadow-md rounded-xl">
               <div className="card-body p-4">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h2 className="text-sm font-semibold">Connections</h2>
+                    <h2 className="text-sm font-semibold">
+                      {isClient ? "Team Contacts" : "Connections"}
+                    </h2>
                     <p className="text-xs opacity-60">
-                      {friends.length} connected
+                      {isClient
+                        ? `${friends.length} team members`
+                        : `${friends.length} connected`}
                     </p>
                   </div>
                   <Link to="/friends" className="btn btn-outline btn-xs">
@@ -386,7 +547,7 @@ const HomePage = () => {
               </div>
             </div>
 
-            {/* RECOMMENDED USERS */}
+            {/* RECOMMENDED USERS/CONTACTS */}
             <div className="card bg-base-100 shadow-md rounded-xl">
               <div className="card-body p-4">
                 <div className="flex items-center gap-3 p-2 border border-base-300 rounded-lg">
@@ -394,9 +555,13 @@ const HomePage = () => {
                     <UserPlusIcon className="size-4 text-base-100" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold">Suggested Colleagues</h2>
+                    <h2 className="text-lg font-bold">
+                      {isClient ? "Team Members" : "Suggested Colleagues"}
+                    </h2>
                     <p className="text-sm opacity-70">
-                      Connect with team members in your department
+                      {isClient
+                        ? "Connect with project team members"
+                        : "Connect with team members in your department"}
                     </p>
                   </div>
                 </div>
@@ -405,13 +570,15 @@ const HomePage = () => {
                   <div className="flex justify-center py-8">
                     <span className="loading loading-spinner loading-md text-primary" />
                   </div>
-                ) : recommendedUsers.length === 0 ? (
+                ) : shuffledRecommendedUsers.length === 0 ? (
                   <div className="text-center py-6">
                     <div className="w-16 h-16 mx-auto mb-3 bg-base-200 rounded-full flex items-center justify-center">
                       <UsersIcon className="size-6 opacity-40" />
                     </div>
                     <p className="text-sm opacity-70">
-                      No recommendations available
+                      {isClient
+                        ? "No team members available"
+                        : "No recommendations available"}
                     </p>
                   </div>
                 ) : (
@@ -446,17 +613,18 @@ const HomePage = () => {
                               {user.fullName}
                             </p>
 
-                            {user.location && (
-                              <p className="text-xs opacity-70 truncate flex items-center gap-1">
-                                <MapPinIcon className="size-3" />
-                                {user.location}
+                            {user.position && (
+                              <p className="text-xs opacity-70 truncate">
+                                {user.position}
                               </p>
                             )}
 
-                            <span className="badge badge-secondary badge-sm mt-1">
-                              {getDepartmentIcon(user.department)}{" "}
-                              {user.department}
-                            </span>
+                            {user.department && (
+                              <span className="badge badge-secondary badge-sm mt-1">
+                                {getDepartmentIcon(user.department)}{" "}
+                                {user.department}
+                              </span>
+                            )}
                           </div>
 
                           {/* Action */}
@@ -487,26 +655,35 @@ const HomePage = () => {
                   <div className="text-lg font-bold text-primary">
                     {friends.length}
                   </div>
-                  <div className="text-[11px] opacity-60">Friends</div>
+                  <div className="text-[11px] opacity-60">
+                    {isClient ? "Team Members" : "Connections"}
+                  </div>
                 </div>
 
-                <div className="bg-base-100 p-3 rounded-lg border border-base-300">
-                  <div className="text-2xl font-bold text-secondary">
-                    {posts.length}
-                  </div>
-                  <div className="text-xs opacity-70">Posts</div>
-                </div>
-                <div className="bg-base-100 p-3 rounded-lg border border-base-300">
-                  <div className="text-2xl font-bold text-accent">
-                    {stories.length}
-                  </div>
-                  <div className="text-xs opacity-70">Active Stories</div>
-                </div>
+                {!isClient && (
+                  <>
+                    <div className="bg-base-100 p-3 rounded-lg border border-base-300">
+                      <div className="text-2xl font-bold text-secondary">
+                        {posts.length}
+                      </div>
+                      <div className="text-xs opacity-70">Posts</div>
+                    </div>
+                    <div className="bg-base-100 p-3 rounded-lg border border-base-300">
+                      <div className="text-2xl font-bold text-accent">
+                        {stories.length}
+                      </div>
+                      <div className="text-xs opacity-70">Active Stories</div>
+                    </div>
+                  </>
+                )}
+
                 <div className="bg-base-100 p-3 rounded-lg border border-base-300">
                   <div className="text-2xl font-bold text-info">
-                    {recommendedUsers.length}
+                    {shuffledRecommendedUsers.length}
                   </div>
-                  <div className="text-xs opacity-70">Suggestions</div>
+                  <div className="text-xs opacity-70">
+                    {isClient ? "Team" : "Suggestions"}
+                  </div>
                 </div>
               </div>
             </div>
@@ -514,12 +691,15 @@ const HomePage = () => {
         </div>
       </div>
 
-      <button
-        onClick={() => setShowCreateStory(true)}
-        className="fixed bottom-5 right-5 w-12 h-12 bg-gradient-to-r from-primary to-secondary rounded-full shadow-md flex items-center justify-center z-40"
-      >
-        <Camera className="size-6 text-base-100" />
-      </button>
+      {/* Floating Action Button - Hanya untuk employee */}
+      {!isClient && (
+        <button
+          onClick={() => setShowCreateStory(true)}
+          className="fixed bottom-5 right-5 w-12 h-12 bg-gradient-to-r from-primary to-secondary rounded-full shadow-md flex items-center justify-center z-40"
+        >
+          <Camera className="size-6 text-base-100" />
+        </button>
+      )}
 
       {showCreateStory && (
         <StoryCreateModal

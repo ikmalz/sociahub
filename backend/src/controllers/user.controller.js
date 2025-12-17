@@ -11,6 +11,8 @@ export async function getRecommendedUsers(req, res) {
         { _id: { $ne: currentUserId } },
         { _id: { $nin: currentUser.friends } },
         { isOnBoarded: true },
+        { isActive: true },
+        { approvalStatus: "approved" },
       ],
     });
 
@@ -23,12 +25,11 @@ export async function getRecommendedUsers(req, res) {
 
 export async function getMyFriends(req, res) {
   try {
-    const user = await User.findById(req.user.id)
-      .select("friends")
-      .populate({
-        path: "friends",
-        select: "fullName profilePic department position email phoneNumber location bio expertise skills isOnBoarded nativeLanguange learningLanguange createdAt", // HAPUS employeeId
-      });
+    const user = await User.findById(req.user.id).select("friends").populate({
+      path: "friends",
+      select:
+        "fullName profilePic department position email phoneNumber location bio expertise skills isOnBoarded nativeLanguange learningLanguange createdAt", // HAPUS employeeId
+    });
 
     res.status(200).json(user.friends || []);
   } catch (error) {
@@ -61,6 +62,12 @@ export async function sendFriendRequest(req, res) {
         .json({ message: "You are already friends with this user" });
     }
 
+    if (!recipient.isActive || recipient.approvalStatus !== "approved") {
+      return res.status(400).json({
+        message: "You cannot send a friend request to this user",
+      });
+    }
+
     // check if a req already exists
     const existingRequest = await FriendRequest.findOne({
       $or: [
@@ -70,11 +77,9 @@ export async function sendFriendRequest(req, res) {
     });
 
     if (existingRequest) {
-      return res
-        .status(400)
-        .json({
-          message: "A friend request already exists between you and this user",
-        });
+      return res.status(400).json({
+        message: "A friend request already exists between you and this user",
+      });
     }
 
     const friendRequest = await FriendRequest.create({

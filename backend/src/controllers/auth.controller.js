@@ -36,35 +36,53 @@ export async function signup(req, res) {
       fullName,
       password,
       profilePic: randomAvatar,
+      role: "unassigned", 
+      isActive: false,
+      isOnBoarded: false,
+      approvalStatus: "pending",
     });
 
-    try {
-      await upsertStreamUser({
-        id: newUser._id.toString(),
-        name: newUser.fullName,
-        image: newUser.profilePic || "",
-      });
-      console.log(`Stream user created for ${newUser.fullName}`);
-    } catch (error) {
-      console.log("Error creating Stream user:", error);
-    }
+    // JANGAN buat Stream user di sini - tunggu sampai di-approve
+    // try {
+    //   await upsertStreamUser({
+    //     id: newUser._id.toString(),
+    //     name: newUser.fullName,
+    //     image: newUser.profilePic || "",
+    //   });
+    //   console.log(`Stream user created for ${newUser.fullName}`);
+    // } catch (error) {
+    //   console.log("Error creating Stream user:", error);
+    // }
 
-    const token = jwt.sign(
-      { userId: newUser._id },
-      process.env.JWT_SECRET_KEY,
-      {
-        expiresIn: "7d",
+    // JANGAN BUAT TOKEN DI SINI! <<< INI MASALAH UTAMA
+    // const token = jwt.sign(
+    //   { userId: newUser._id },
+    //   process.env.JWT_SECRET_KEY,
+    //   {
+    //     expiresIn: "7d",
+    //   }
+    // );
+
+    // JANGAN SET COOKIE DI SINI! <<< INI MASALAH UTAMA
+    // res.cookie("jwt", token, {
+    //   maxAge: 7 * 24 * 60 * 60 * 1000,
+    //   httpOnly: true,
+    //   sameSite: "strict",
+    //   secure: process.env.NODE_ENV === "production",
+    // });
+
+    res.status(201).json({ 
+      success: true, 
+      message: "Registration successful! Please wait for admin approval.",
+      user: {
+        _id: newUser._id,
+        email: newUser.email,
+        fullName: newUser.fullName,
+        profilePic: newUser.profilePic,
+        approvalStatus: newUser.approvalStatus,
+        isActive: newUser.isActive
       }
-    );
-
-    res.cookie("jwt", token, {
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      httpOnly: true,
-      sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
     });
-
-    res.status(201).json({ success: true, user: newUser });
   } catch (error) {
     console.log("Error in signup controller", error);
     res.status(500).json({ message: "Internal Server Error" });
@@ -80,28 +98,46 @@ export async function login(req, res) {
     }
 
     const user = await User.findOne({ email });
-    if (!user)
-      return res.status(401).json({ message: "Invalid email or password" });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
 
     const isPasswordCorrect = await user.matchPassword(password);
-    if (!isPasswordCorrect)
-      return res.status(401).json({ message: "Invalid email or password" });
+    if (!isPasswordCorrect) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    if (!user.isActive || user.approvalStatus !== "approved") {
+      return res.status(403).json({
+        message: "Account not active. Please wait for admin approval.",
+        approvalStatus: user.approvalStatus 
+      });
+    }
+
+    if (user.role === "unassigned" || !user.role) {
+      return res.status(403).json({
+        message: "Account not yet assigned a role. Please contact admin.",
+      });
+    }
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET_KEY, {
       expiresIn: "7d",
     });
 
     res.cookie("jwt", token, {
-      maxAge: 7 * 24 * 60 * 60 * 1000,
       httpOnly: true,
-      sameSite: "strict",
+      sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.status(200).json({ success: true, user });
+    const safeUser = user.toObject();
+    delete safeUser.password;
+
+    res.status(200).json({ success: true, user: safeUser });
   } catch (error) {
-    console.log("Error in login controller", error.message);
-    res.status(500).json({ message: "Internal server error" });
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 }
 
@@ -124,41 +160,73 @@ export const completeOnboarding = async (req, res) => {
       profilePic,
       expertise,
       skills,
+      institutionName,    
+      institutionType,    
+      projectInterests,   
+      governmentLevel,    
+      employeeId,         
     } = req.body;
 
     if (!fullName) {
       return res.status(400).json({ message: "Full name is required" });
     }
-    if (!department) {
-      return res.status(400).json({ message: "Department is required" });
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
-    if (!position) {
-      return res.status(400).json({ message: "Position is required" });
+
+    if (user.role === "client") {
+      if (!institutionName) {
+        return res.status(400).json({ message: "Institution name is required for government clients" });
+      }
+    } else if (user.role === "employee") {
+      if (!department) {
+        return res.status(400).json({ message: "Department is required for employees" });
+      }
+      if (!position) {
+        return res.status(400).json({ message: "Position is required for employees" });
+      }
+    } else {
+      user.role = "employee";
+      await user.save();
+    }
+
+    const updateData = {
+      fullName,
+      email: email || user.email,
+      phoneNumber,
+      bio,
+      location,
+      profilePic,
+      expertise,
+      isOnBoarded: true,
+    };
+
+    // Tambahkan field berdasarkan role
+    if (user.role === "client") {
+      updateData.institutionName = institutionName;
+      updateData.institutionType = institutionType || "";
+      updateData.projectInterests = projectInterests || "";
+      updateData.governmentLevel = governmentLevel || "";
+      updateData.department = ""; 
+      updateData.position = position || "";
+      updateData.companyName = institutionName;
+    } else if (user.role === "employee") {
+      updateData.department = department;
+      updateData.position = position;
+      updateData.skills = skills || [];
+      updateData.employeeId = employeeId || "";
+      updateData.companyName = req.body.companyName || user.companyName || "";
     }
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       {
-        $set: {
-          fullName,
-          email: email || req.user.email,
-          phoneNumber,
-          department,
-          position,
-          bio,
-          location,
-          profilePic,
-          expertise,
-          skills: skills || [],
-          isOnBoarded: true,
-        },
+        $set: updateData,
       },
       { new: true, runValidators: true }
     ).select("-password");
-
-    if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
 
     // Update Stream user
     try {
@@ -167,14 +235,8 @@ export const completeOnboarding = async (req, res) => {
         name: updatedUser.fullName,
         image: updatedUser.profilePic || "",
       });
-      console.log(
-        `Stream user updated after onboarding for ${updatedUser.fullName}`
-      );
     } catch (streamError) {
-      console.log(
-        "Error updating Stream user during onboarding",
-        streamError.message
-      );
+      console.log("Stream update error:", streamError.message);
     }
 
     res.status(200).json({
@@ -201,46 +263,66 @@ export const updateProfile = async (req, res) => {
       profilePic,
       expertise,
       skills,
+      institutionName,
+      institutionType,
+      projectInterests,
+      governmentLevel,
+      employeeId,
+      companyName,
     } = req.body;
 
     if (!fullName) {
       return res.status(400).json({ message: "Full name is required" });
     }
 
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const updateData = {
+      fullName,
+      email: email || user.email,
+      phoneNumber,
+      bio,
+      location,
+      profilePic,
+      expertise,
+    };
+
+    if (user.role === "client") {
+      updateData.institutionName = institutionName || user.institutionName;
+      updateData.institutionType = institutionType || user.institutionType;
+      updateData.projectInterests = projectInterests || user.projectInterests;
+      updateData.governmentLevel = governmentLevel || user.governmentLevel;
+      updateData.department = ""; 
+      updateData.position = position || user.position;
+      updateData.companyName = institutionName || user.companyName;
+    } else if (user.role === "employee") {
+      updateData.department = department || user.department;
+      updateData.position = position || user.position;
+      updateData.skills = skills || user.skills || [];
+      updateData.employeeId = employeeId || user.employeeId;
+      updateData.companyName = companyName || user.companyName;
+    }
+
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       {
-        $set: {
-          fullName,
-          email: email || req.user.email,
-          phoneNumber,
-          department,
-          position,
-          bio,
-          location,
-          profilePic,
-          expertise,
-          skills: skills || [],
-        },
+        $set: updateData,
       },
       { new: true, runValidators: true }
     ).select("-password");
 
-    if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // Update Stream user jika nama atau foto berubah
-    if (fullName !== req.user.fullName || profilePic !== req.user.profilePic) {
+    if (fullName !== user.fullName || profilePic !== user.profilePic) {
       try {
         await upsertStreamUser({
           id: updatedUser._id.toString(),
           name: updatedUser.fullName,
           image: updatedUser.profilePic || "",
         });
-        console.log(`Stream user updated for ${updatedUser.fullName}`);
       } catch (streamError) {
-        console.log("Error updating Stream user", streamError.message);
+        console.log("Stream update error:", streamError.message);
       }
     }
 

@@ -1,29 +1,29 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import React, { useState } from "react";
-import { login } from "../lib/api";
+import React, { useState, useEffect } from "react";
 import { ShipWheelIcon } from "lucide-react";
-import { Link } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import useLogin from "../hooks/useLogin";
+import toast from "react-hot-toast";
 
 const LoginPage = () => {
   const [loginData, setLoginData] = useState({
     email: "",
     password: "",
   });
-
-  // This is how we did it first withhout using our custom hook
-  // const queryClient = useQueryClient();
-
-  // const {
-  //   mutate: loginMutation,
-  //   isPending,
-  //   error,
-  // } = useMutation({
-  //   mutationFn: login,
-  //   onSuccess: () => queryClient.invalidateQueries({ queryKey: ["authUser"] }),
-  // });
-
+  
+  const location = useLocation();
+  const navigate = useNavigate();
+  
   const { isPending, error, loginMutation } = useLogin();
+
+  // Tampilkan pesan jika ada dari state (misalnya dari signup)
+  useEffect(() => {
+    if (location.state?.message) {
+      toast(location.state.message, {
+        icon: location.state.message.includes("approved") ? "✅" : "⏳",
+        duration: 5000,
+      });
+    }
+  }, [location]);
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -45,12 +45,14 @@ const LoginPage = () => {
               Sociahub
             </span>
           </div>
+
           {/* ERROR MESSAGE DISPLAY */}
           {error && (
             <div className="alert alert-error mb-4">
               <span>
-                {error.response?.data?.message ||
-                  "Login failed. Server unreachable."}
+                {error.response?.data?.message?.includes("approval")
+                  ? "Your account is pending admin approval. Please wait."
+                  : error.response?.data?.message || "Login failed. Please try again."}
               </span>
             </div>
           )}
@@ -127,10 +129,20 @@ const LoginPage = () => {
                 </div>
               </div>
             </form>
+            
+            <div className="mt-6 p-4 bg-info/10 rounded-lg border border-info/20">
+              <p className="text-sm text-center">
+                <span className="font-semibold">Note:</span> New accounts require admin approval before login.
+                <br />
+                <span className="text-xs opacity-70">
+                  You will be redirected to a waiting page if your account is pending.
+                </span>
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* IMAGE SECTIONA */}
+        {/* IMAGE SECTION */}
         <div className="hidden lg:flex w-full lg:w-1/2 bg-primary/10 items-center justify-center">
           <div className="max-w-md p-8">
             <div className="relative aspect-square max-w-sm mx-auto">
@@ -146,7 +158,7 @@ const LoginPage = () => {
                 Connect with languange partners worldwide
               </h2>
               <p className="opacity-70">
-                Prctice conversation, make friends, and improve your languange
+                Practice conversation, make friends, and improve your languange
                 skills together
               </p>
             </div>

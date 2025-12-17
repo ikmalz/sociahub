@@ -1,4 +1,3 @@
-// lib/api.js
 import { axiosInstance } from "./axios";
 
 export const signup = async (signupData) => {
@@ -95,7 +94,10 @@ export async function createPost(postData) {
     console.log("✅ Post created response:", response.data);
     return response.data;
   } catch (error) {
-    console.error("❌ Error creating post:", error.response?.data || error.message);
+    console.error(
+      "❌ Error creating post:",
+      error.response?.data || error.message
+    );
     throw error;
   }
 }
@@ -154,7 +156,10 @@ export async function updatePost(id, postData) {
     console.log("✅ Post updated response:", response.data);
     return response.data;
   } catch (error) {
-    console.error("❌ Error updating post:", error.response?.data || error.message);
+    console.error(
+      "❌ Error updating post:",
+      error.response?.data || error.message
+    );
     throw error;
   }
 }
@@ -169,7 +174,10 @@ export async function createStory(storyData) {
     console.log("✅ Story created response:", response.data);
     return response.data;
   } catch (error) {
-    console.error("❌ Error creating story:", error.response?.data || error.message);
+    console.error(
+      "❌ Error creating story:",
+      error.response?.data || error.message
+    );
     throw error;
   }
 }
@@ -242,6 +250,54 @@ export async function getMyPosts() {
     console.error("getMyPosts error:", error);
     return [];
   }
+}
+
+export const getClientContacts = async () => {
+  try {
+    const res = await axiosInstance.get("/users/client-contacts"); 
+    return res.data.users || [];
+  } catch (error) {
+    console.error("Error fetching client contacts:", error);
+    return [];
+  }
+};
+
+export const getProjects = async () => {
+  try {
+    const res = await axiosInstance.get("/projects");
+    return res.data.projects || [];
+  } catch (error) {
+    console.error("Error fetching projects:", error);
+    return [];
+  }
+};
+
+export async function getPendingUsers() {
+  try {
+    console.log("🔄 Fetching pending users from API...");
+    const response = await axiosInstance.get("/admin/pending-users");
+    console.log("✅ API Response:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("❌ Error fetching pending users:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+    throw error;
+  }
+}
+
+export async function approveUser(userId, role = "client") {
+  const response = await axiosInstance.put(`/admin/approve/${userId}`, {
+    role,
+  });
+  return response.data;
+}
+
+export async function rejectUser(userId) {
+  const response = await axiosInstance.put(`/admin/reject/${userId}`);
+  return response.data;
 }
 
 // HAPUS YANG INI KARENA SUDAH ADA DI ATAS
