@@ -217,3 +217,16 @@ export async function getUserById(req, res) {
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
+
+export async function getAllUsers(req, res) {
+  try {
+    const users = await User.find({})
+      .select("-password -refreshToken")
+      .sort({ createdAt: -1 });
+    
+    res.status(200).json(users);
+  } catch (error) {
+    console.error("Error in getAllUsers controller", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}

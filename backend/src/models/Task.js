@@ -29,6 +29,19 @@ const taskSchema = new mongoose.Schema(
       enum: ["admin", "employee"],
       default: "admin",
     },
+    notes: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        note: String,
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   { timestamps: true }
 );
