@@ -23,6 +23,7 @@ import WaitingApproval from "./pages/WaitingApproval.jsx";
 import UserProfilePage from "./pages/UserProfilePage.jsx";
 import NetworkPage from "./pages/NetworkPage.jsx";
 import AdminAssignEmployeePage from "./pages/AdminAssignEmployeePage.jsx";
+import AdminProgressPage from "./pages/AdminProgressPage.jsx";
 
 const App = () => {
   const { isLoading, authUser } = useAuthUser();
@@ -183,6 +184,20 @@ const App = () => {
         />
 
         <Route
+          path="/admin/progress"
+          element={
+            <ProtectedRoute
+              requireAdmin={true}
+              element={
+                <AdminLayout>
+                  <AdminProgressPage />
+                </AdminLayout>
+              }
+            />
+          }
+        />
+
+        <Route
           path="/posts"
           element={
             <ProtectedRoute
@@ -193,7 +208,7 @@ const App = () => {
               }
             />
           }
-        />
+        />      
 
         <Route
           path="/my-posts"

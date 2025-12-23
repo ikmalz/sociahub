@@ -19,12 +19,6 @@ const HomeTabs = ({
       show: isClient || isEmployee,
     },
     {
-      id: "stories",
-      label: "Stories",
-      icon: <Camera className="size-4" />,
-      show: !isClient,
-    },
-    {
       id: "posts",
       label: "Posts",
       icon: <MessageSquare className="size-4" />,

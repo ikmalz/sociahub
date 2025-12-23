@@ -559,15 +559,6 @@ const UserProfilePage = () => {
                     </div>
                   ) : null}
 
-                  {!isCurrentUser && (
-                    <button className="btn btn-outline btn-sm btn-block gap-1.5">
-                      <UsersIcon className="size-3.5" />
-                      <span className="text-xs font-medium">
-                        Shared Connections
-                      </span>
-                    </button>
-                  )}
-
                   {isEmployee &&
                     hasField("expertise") &&
                     !isCurrentUser && (

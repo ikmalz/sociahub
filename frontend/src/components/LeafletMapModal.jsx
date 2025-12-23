@@ -45,7 +45,7 @@ function LocationMarker({ position, setPosition, setLocationName }) {
     const handleClick = (e) => {
       const newPos = [e.latlng.lat, e.latlng.lng];
       setPosition(newPos);
-      setLocationName("Lokasi dipilih");
+      setLocationName("Location selected");
     };
 
     map.on("click", handleClick);
@@ -76,7 +76,7 @@ const LeafletMapModal = ({
 
   const defaultCenter = userPosition
     ? [userPosition.lat, userPosition.lng]
-    : [-6.2088, 106.8456]; 
+    : [-6.2088, 106.8456];
   const defaultZoom = userPosition ? 15 : 12;
 
   const searchLocation = useCallback(async (query) => {
@@ -150,7 +150,7 @@ const LeafletMapModal = ({
   const handleSave = () => {
     if (position) {
       onLocationSelect({
-        name: locationName || "Lokasi Terpilih",
+        name: locationName || "Selected Locations",
         lat: position[0],
         lng: position[1],
       });
@@ -160,7 +160,7 @@ const LeafletMapModal = ({
 
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) {
-      alert("Browser tidak mendukung geolocation");
+      alert("Browser does not support geolocation");
       return;
     }
 
@@ -168,10 +168,10 @@ const LeafletMapModal = ({
       (pos) => {
         const newPos = [pos.coords.latitude, pos.coords.longitude];
         setPosition(newPos);
-        setLocationName("Lokasi Saat Ini");
+        setLocationName("Current Location");
       },
       (error) => {
-        alert("Tidak dapat mengakses lokasi Anda");
+        alert("Cannot access your location");
       }
     );
   };
@@ -189,12 +189,15 @@ const LeafletMapModal = ({
 
   return (
     <div className="modal modal-open">
-      <div className="modal-box max-w-3xl p-0 overflow-hidden max-h-[85vh] flex flex-col">
-        <div className="p-4 border-b flex items-center justify-between bg-base-100">
+      <div className="modal-box max-w-3xl p-0 max-h-[85vh] flex flex-col">
+        <div className="p-4 border-b flex items-center justify-between bg-base-200">
           <div className="flex items-center gap-2">
             <MapPin className="w-5 h-5 text-primary" />
-            <h3 className="font-semibold text-lg">Pilih Lokasi</h3>
+            <h3 className="font-semibold text-lg capitalize">
+              Select location
+            </h3>
           </div>
+
           <button onClick={onClose} className="btn btn-ghost btn-sm btn-circle">
             <X className="w-4 h-4" />
           </button>
@@ -203,50 +206,51 @@ const LeafletMapModal = ({
         {/* Search Section */}
         <div className="p-4 border-b bg-base-100 relative">
           <div className="relative">
-            <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
-              <Search className="w-4 h-4 text-gray-400" />
-            </div>
+            <Search className="w-4 h-4 opacity-60 absolute left-3 top-1/2 -translate-y-1/2" />
+
             <input
               ref={searchInputRef}
               type="text"
-              className="input input-bordered w-full pl-10 pr-24"
-              placeholder="Cari lokasi di Indonesia..."
+              className="input input-bordered w-full pl-10 pr-28"
+              placeholder="Search location (Indonesia)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+
+            <div className="absolute right-2 top-1/2 -translate-y-1/2">
               {isSearching ? (
                 <span className="loading loading-spinner loading-sm"></span>
               ) : (
                 <button
                   onClick={() => searchLocation(searchQuery)}
-                  className="btn btn-primary btn-sm px-3"
+                  className="btn btn-primary btn-sm"
                 >
-                  Cari
+                  Search
                 </button>
               )}
             </div>
           </div>
 
-          {/* Search Results - HIGHER Z-INDEX */}
           {searchResults.length > 0 && (
-            <div className="absolute top-full left-4 right-4 mt-1 z-[9999]">
-              <div className="bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+            <div className="absolute top-full left-4 right-4 mt-2 z-50">
+              <ul className="menu bg-base-100 rounded-box shadow max-h-60 overflow-y-auto">
                 {searchResults.map((result, index) => (
-                  <div
-                    key={index}
-                    onClick={() => handleSelectResult(result)}
-                    className="px-3 py-2 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
-                  >
-                    <div className="font-medium text-sm">{result.name}</div>
-                    {result.address && (
-                      <div className="text-xs text-gray-500 truncate">
-                        {result.address}
-                      </div>
-                    )}
-                  </div>
+                  <li key={index}>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectResult(result)}
+                      className="flex flex-col items-start"
+                    >
+                      <span className="font-medium text-sm">{result.name}</span>
+                      {result.address && (
+                        <span className="text-xs opacity-60">
+                          {result.address}
+                        </span>
+                      )}
+                    </button>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
           )}
         </div>
@@ -278,34 +282,34 @@ const LeafletMapModal = ({
               </MapContainer>
             </div>
 
-            {/* Selected Location Info */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <MapPin className="w-4 h-4 text-primary" />
+            <div className="card bg-base-200">
+              <div className="card-body p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center">
+                    <MapPin className="w-4 h-4 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium">Selected location</h4>
+                    <p className="text-sm opacity-70">
+                      {position ? locationName : "No location selected"}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-medium">Lokasi Dipilih</h4>
-                  <p className="text-sm text-gray-500">
-                    {position ? locationName : "Belum ada lokasi"}
-                  </p>
-                </div>
-              </div>
 
-              {position && (
-                <div className="mt-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nama Lokasi
-                  </label>
-                  <input
-                    type="text"
-                    className="input input-bordered w-full text-sm"
-                    value={locationName}
-                    onChange={(e) => setLocationName(e.target.value)}
-                    placeholder="Berikan nama untuk lokasi ini"
-                  />
-                </div>
-              )}
+                {position && (
+                  <div className="mt-4">
+                    <label className="label">
+                      <span className="label-text">Location name</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="input input-bordered w-full"
+                      value={locationName}
+                      onChange={(e) => setLocationName(e.target.value)}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Quick Actions */}
@@ -315,7 +319,7 @@ const LeafletMapModal = ({
                 className="btn btn-outline btn-sm flex-1 flex items-center gap-2"
               >
                 <Navigation className="w-4 h-4" />
-                Lokasi Saya
+                My location
               </button>
               <button
                 onClick={() => {
@@ -330,19 +334,17 @@ const LeafletMapModal = ({
           </div>
         </div>
 
-        <div className="p-4 border-t bg-base-100">
+        <div className="p-4 border-t bg-base-200">
           <div className="flex gap-2">
             <button onClick={onClose} className="btn btn-ghost flex-1">
-              Batal
+              Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={!position}
-              className={`btn flex-1 ${
-                position ? "btn-primary" : "btn-disabled"
-              }`}
+              className="btn btn-primary flex-1"
             >
-              Simpan
+              Save
             </button>
           </div>
         </div>

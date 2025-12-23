@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import {
   getOutgoingFriendReqs,
   getPosts,
@@ -7,46 +7,47 @@ import {
   getTimelineStories,
   getUserFriends,
   sendFriendRequest,
-  getClientContacts,
-  getProjects,
   getMyProjects,
   getAllowedEmployees,
+  markProjectAsComplete,
 } from "../lib/api";
 import { Link } from "react-router";
 import {
   CheckCircleIcon,
-  MapPinIcon,
   UserPlusIcon,
   UsersIcon,
   Camera,
   MessageSquare,
-  Sparkles,
   Clock,
   User,
   BuildingIcon,
   Briefcase,
   FileText,
   Landmark,
-  Calendar,
   Target,
+  Home,
+  FolderOpen,
   TrendingUp,
+  PlusCircle,
+  BarChart3,
+  Image,
+  Video,
 } from "lucide-react";
 import FriendCard from "../components/FriendCard";
 import NoFriendsFound from "../components/NoFriendsFound";
-import { capitalize } from "../lib/utils";
 import PostForm from "../components/PostForm";
 import PostCard from "../components/PostCard";
-import StoriesPreview from "../components/StoriesPreview";
 import StoryCreateModal from "../components/StoryCreateModal";
 import StoriesCarousel from "../components/StoriesCarousel";
 import useAuthUser from "../hooks/useAuthUser";
 import { getVisibleRoles } from "../utils/roleFilter";
 import ProjectCreateModal from "../components/ProjectCreateModal";
 import ProjectProgressUpdate from "../components/ProjectProgressUpdate";
+import ProjectNoteModal from "../components/ProjectNoteModal";
+import ProjectNotesDisplay from "../components/ProjectNoteDisplay";
 
 const getDepartmentIcon = (department) => {
   if (!department) return "👤";
-
   const deptLower = department?.toLowerCase() || "";
   const icons = {
     "human resources": "👥",
@@ -66,7 +67,6 @@ const getDepartmentIcon = (department) => {
     legal: "⚖️",
     executive: "👔",
   };
-
   return icons[deptLower] || "👤";
 };
 
@@ -85,7 +85,13 @@ const HomePage = () => {
   const [selectedStoryIndex, setSelectedStoryIndex] = useState(0);
   const [selectedUserIndex, setSelectedUserIndex] = useState(0);
   const [showProjectModal, setShowProjectModal] = useState(false);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
+  const [expandedProjects, setExpandedProjects] = useState({});
+  const [activeTab, setActiveTab] = useState(isClient ? "projects" : "feed");
+  const [postFormType, setPostFormType] = useState("text");
 
+  // Queries
   const { data: friends = [], isLoading: loadingFriends } = useQuery({
     queryKey: ["friends"],
     queryFn: getUserFriends,
@@ -95,14 +101,6 @@ const HomePage = () => {
     queryKey: ["recommended-users", userRole],
     queryFn: getRecommendedUsers,
     enabled: !!userRole,
-    onSuccess: (data) => {
-      console.log("Recommended Users Data:", data);
-      console.log("User Role:", userRole);
-      console.log("Allowed Roles:", getVisibleRoles(userRole));
-    },
-    onError: (error) => {
-      console.error("Error fetching recommended users:", error);
-    },
   });
 
   const { data: outgoingFriendsReqs } = useQuery({
@@ -126,6 +124,15 @@ const HomePage = () => {
     enabled: isClient || isEmployee,
   });
 
+  // Mutations
+  const { mutate: markAsCompleteMutation, isPending: isMarkingComplete } =
+    useMutation({
+      mutationFn: markProjectAsComplete,
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["my-projects", userRole] });
+      },
+    });
+
   const { mutate: sendRequestMutation, isPending } = useMutation({
     mutationFn: sendFriendRequest,
     onSuccess: () => {
@@ -141,6 +148,7 @@ const HomePage = () => {
       enabled: isClient,
     });
 
+  // Effects
   useEffect(() => {
     const outgoingIds = new Set();
     if (outgoingFriendsReqs?.length > 0) {
@@ -149,7 +157,11 @@ const HomePage = () => {
     }
   }, [outgoingFriendsReqs]);
 
-  const stories = storiesData?.stories || [];
+  // Handlers
+  const handleOpenNoteModal = (projectId) => {
+    setSelectedProjectId(projectId);
+    setShowNoteModal(true);
+  };
 
   const handleOpenStories = (userIndex = 0, storyIndex = 0) => {
     setSelectedUserIndex(userIndex);
@@ -157,607 +169,716 @@ const HomePage = () => {
     setShowStories(true);
   };
 
+  const toggleProjectNotes = (projectId) => {
+    setExpandedProjects((prev) => ({
+      ...prev,
+      [projectId]: !prev[projectId],
+    }));
+  };
+
+  const handleMarkAsComplete = (projectId) => {
+    if (window.confirm("Mark this project as completed?")) {
+      markAsCompleteMutation(projectId);
+    }
+  };
+
+  const handlePostButtonClick = (type = "text") => {
+    setPostFormType(type);
+    document.getElementById("post-form-modal")?.showModal();
+  };
+
+  // Data processing
+  const stories = storiesData?.stories || [];
   const allowedRoles = getVisibleRoles(userRole);
 
   const filteredRecommendedUsers = recommendedUsers.filter((user) => {
     const isAllowedRole = allowedRoles.includes(user.role);
     const isNotCurrentUser = user._id !== authUser?._id;
     const isActive = user.isActive !== false;
-
-    console.log(`User ${user.fullName} (${user.role}):`, {
-      isAllowedRole,
-      isNotCurrentUser,
-      isActive,
-      allowedRoles,
-    });
-
     return isAllowedRole && isNotCurrentUser && isActive;
   });
 
   const shuffledRecommendedUsers = filteredRecommendedUsers
     .sort(() => 0.5 - Math.random())
-    .slice(0, 2);
+    .slice(0, 3);
+
+  // ==================== REUSABLE COMPONENTS ====================
+
+  // Project Card Component
+  const ProjectCard = ({ project, showClientInfo = false }) => {
+    const isExpanded = expandedProjects[project._id];
+    const isCompleted = project.status === "completed";
+    const isAssigned =
+      isEmployee && project.employees?.some((emp) => emp._id === authUser?._id);
+    const isClientProject = isClient && project.client?._id === authUser?._id;
+    const canMarkComplete = (isAssigned || isClientProject) && !isCompleted;
+
+    return (
+      <div className="card bg-base-100 border border-base-300 p-4 hover:shadow-md transition">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex-1 min-w-0">
+            <h4 className="font-medium text-sm mb-1">{project.title}</h4>
+            <p className="text-xs opacity-70 line-clamp-2 mb-1">
+              {project.description}
+            </p>
+            {showClientInfo && project.client && (
+              <p className="text-xs opacity-70">
+                Client: {project.client.fullName}
+                {project.client.institutionName &&
+                  ` (${project.client.institutionName})`}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {canMarkComplete && (
+              <button
+                onClick={() => handleMarkAsComplete(project._id)}
+                className="btn btn-success btn-xs"
+                disabled={isMarkingComplete}
+                title="Mark as Complete"
+              >
+                <CheckCircleIcon className="size-3 mr-1" />
+                Complete
+              </button>
+            )}
+            <span
+              className={`badge badge-xs ${
+                isCompleted
+                  ? "badge-success"
+                  : project.status === "active"
+                  ? "badge-warning"
+                  : "badge-info"
+              }`}
+            >
+              {project.status}
+            </span>
+          </div>
+        </div>
+
+        {/* Progress/Completed Status */}
+        {!isCompleted ? (
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs opacity-70">Progress</span>
+            </div>
+            {isEmployee && <ProjectProgressUpdate project={project} compact />}
+          </div>
+        ) : (
+          <div className="bg-success/10 border border-success/20 rounded-lg p-3 mb-3">
+            <div className="flex items-center gap-2 text-success">
+              <CheckCircleIcon className="size-4" />
+              <span className="text-sm font-medium">Project Completed</span>
+            </div>
+            <p className="text-xs opacity-70 mt-1">
+              Completed on {new Date(project.updatedAt).toLocaleDateString()}
+            </p>
+          </div>
+        )}
+
+        {/* Notes Section */}
+        {isExpanded && (
+          <ProjectNotesDisplay
+            projectId={project._id}
+            notes={project.notes || []}
+            project={project}
+          />
+        )}
+
+        {/* Footer Actions */}
+        <div className="flex justify-between items-center mt-3 pt-3 border-t border-base-300">
+          <div className="flex items-center gap-2">
+            {project.notes?.length > 0 ? (
+              <button
+                onClick={() => toggleProjectNotes(project._id)}
+                className="btn btn-ghost btn-xs"
+              >
+                <MessageSquare className="size-3 mr-1" />
+                {isExpanded ? "Hide" : "Show"} Notes ({project.notes.length})
+              </button>
+            ) : (
+              <span className="text-xs opacity-70">No notes yet</span>
+            )}
+          </div>
+          <button
+            onClick={() => handleOpenNoteModal(project._id)}
+            className="btn btn-outline btn-xs"
+          >
+            <MessageSquare className="size-3 mr-1" />
+            Add Note
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // Stories Preview Component
+  const StoriesPreview = () => (
+    <div className="card bg-base-100 shadow rounded-xl">
+      <div className="card-body p-3 md:p-4">
+        {/* Header lebih kecil */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 md:w-7 md:h-7 rounded-md bg-primary flex items-center justify-center">
+              <Camera className="size-3 md:size-3.5 text-base-100" />
+            </div>
+            <div>
+              <h2 className="text-xs md:text-sm font-semibold">Stories</h2>
+              <p className="text-[10px] md:text-xs opacity-60">
+                Latest moments
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setShowCreateStory(true)}
+            className="btn btn-primary btn-xs md:btn-sm"
+          >
+            <Camera className="size-2.5 md:size-3 mr-1" />
+            <span className="text-xs">Create</span>
+          </button>
+        </div>
+
+        {stories.length === 0 ? (
+          <div className="text-center py-6 md:py-7">
+            <div className="w-16 h-16 md:w-18 md:h-18 mx-auto mb-3 bg-base-200 rounded-full flex items-center justify-center">
+              <Camera className="size-5 md:size-6 opacity-40" />
+            </div>
+            <p className="text-xs md:text-sm opacity-70 mb-3">
+              No stories from colleagues
+            </p>
+            <button
+              onClick={() => setShowCreateStory(true)}
+              className="btn btn-outline btn-xs md:btn-sm"
+            >
+              Share first!
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Stories List - lebih kecil dengan margin atas */}
+            <div className="relative mt-2">
+              <div className="flex gap-2.5 md:gap-3 overflow-x-auto pb-3 md:pb-4 scrollbar-thin -mx-1 px-1">
+                {/* Create Story Card - diturunkan */}
+                <div className="flex-shrink-0 pt-1">
+                  <button
+                    onClick={() => setShowCreateStory(true)}
+                    className="flex flex-col items-center group"
+                  >
+                    <div className="relative mb-1.5">
+                      <div className="w-16 h-16 md:w-18 md:h-18 rounded-full border-2 border-dashed border-gray-300 group-hover:border-primary transition-colors flex items-center justify-center">
+                        <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center">
+                          <Camera className="size-4 md:size-5 text-primary" />
+                        </div>
+                      </div>
+                      <div className="absolute bottom-0 right-0 w-5 h-5 md:w-6 md:h-6 bg-primary rounded-full flex items-center justify-center border-2 border-base-100">
+                        <span className="text-[10px] text-base-100 font-bold">
+                          +
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-[10px] md:text-xs font-medium">
+                      Add Story
+                    </span>
+                  </button>
+                </div>
+
+                {/* Colleagues' Stories - diturunkan */}
+                {stories.map((userStories, userIndex) => {
+                  const user = userStories.user;
+                  const userStoryCount = userStories.stories?.length || 0;
+                  const hasUnviewed = userStories.hasUnviewed || false;
+
+                  return (
+                    <div key={user._id} className="flex-shrink-0 pt-1">
+                      <button
+                        onClick={() => handleOpenStories(userIndex, 0)}
+                        className="flex flex-col items-center group relative"
+                      >
+                        <div className="relative mb-1.5">
+                          <div
+                            className={`w-14 h-14 md:w-16 md:h-16 rounded-full p-0.5 ${
+                              hasUnviewed
+                                ? "bg-gradient-to-r from-primary to-secondary"
+                                : "bg-gradient-to-r from-gray-300 to-gray-400"
+                            }`}
+                          >
+                            <div className="w-full h-full rounded-full overflow-hidden border border-base-100">
+                              <img
+                                src={user.profilePic || "/default-avatar.png"}
+                                alt={user.fullName}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.src = "/default-avatar.png";
+                                }}
+                              />
+                            </div>
+                          </div>
+
+                          {userStoryCount > 0 && (
+                            <div className="absolute -top-1 -right-1 w-4 h-4 md:w-5 md:h-5 bg-primary rounded-full flex items-center justify-center border border-base-100">
+                              <span className="text-[8px] md:text-[10px] text-base-100 font-bold">
+                                {userStoryCount}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-[10px] md:text-xs font-medium truncate max-w-16 md:max-w-20">
+                          {user.fullName}
+                        </span>
+
+                        {hasUnviewed && (
+                          <div className="absolute top-0 left-0 w-2 h-2 md:w-2.5 md:h-2.5 bg-primary rounded-full animate-pulse"></div>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Stories Stats lebih kecil */}
+        {stories.length > 0 && (
+          <div className="mt-4 md:mt-5 pt-3 md:pt-4 border-t border-base-300">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs md:text-sm">
+              <div className="flex items-center gap-1.5 md:gap-2">
+                <UsersIcon className="size-3 md:size-3.5 opacity-70" />
+                <span>
+                  {stories.length}{" "}
+                  {stories.length === 1 ? "colleague" : "colleagues"} has
+                  stories
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 md:gap-2">
+                <Clock className="size-3 md:size-3.5 opacity-70" />
+                <span>24h remaining</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const QuickStats = () => {
+    const completedProjects = projects.filter(
+      (p) => p.status === "completed"
+    ).length;
+    const activeProjects = projects.filter((p) => p.status === "active").length;
+
+    return (
+      <div className="bg-gradient-to-r from-primary/10 to-secondary/10 rounded-xl border border-primary/20 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold text-sm">Your Stats</h3>
+          <BarChart3 className="size-4 opacity-70" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-base-100 p-3 rounded-lg border border-base-300">
+            <div className="text-lg font-bold text-primary">
+              {friends.length}
+            </div>
+            <div className="text-[10px] opacity-60">
+              {isClient ? "Team Members" : "Connections"}
+            </div>
+          </div>
+
+          {!isClient ? (
+            <>
+              <div className="bg-base-100 p-3 rounded-lg border border-base-300">
+                <div className="text-lg font-bold text-secondary">
+                  {posts.length}
+                </div>
+                <div className="text-[10px] opacity-60">Posts</div>
+              </div>
+              <div className="bg-base-100 p-3 rounded-lg border border-base-300">
+                <div className="text-lg font-bold text-accent">
+                  {stories.length}
+                </div>
+                <div className="text-[10px] opacity-60">Stories</div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="bg-base-100 p-3 rounded-lg border border-base-300">
+                <div className="text-lg font-bold text-success">
+                  {completedProjects}
+                </div>
+                <div className="text-[10px] opacity-60">Completed</div>
+              </div>
+              <div className="bg-base-100 p-3 rounded-lg border border-base-300">
+                <div className="text-lg font-bold text-warning">
+                  {activeProjects}
+                </div>
+                <div className="text-[10px] opacity-60">Active</div>
+              </div>
+            </>
+          )}
+
+          <div className="bg-base-100 p-3 rounded-lg border border-base-300">
+            <div className="text-lg font-bold text-info">{projects.length}</div>
+            <div className="text-[10px] opacity-60">
+              {isClient ? "Projects" : "Total Projects"}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-base-200">
-      <div className="container mx-auto px-4 sm:px-5 lg:px-8 py-5">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* MAIN CONTENT */}
-          <div className="lg:col-span-2">
-            {/* Welcome Header */}
-            <div
-              className={`bg-gradient-to-r ${
-                isClient
-                  ? "from-primary/20 to-primary/10"
-                  : "from-primary to-secondary"
-              } ${
-                isClient ? "border-l-4 border-primary" : "text-primary-content"
-              } rounded-xl p-4 shadow-md mb-6`}
-            >
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    {isClient ? (
-                      <Landmark className="size-5 text-primary" />
-                    ) : (
-                      <Briefcase className="size-5" />
-                    )}
-                    <h1 className="text-lg font-semibold">
-                      {isClient
-                        ? `Welcome, ${
-                            authUser?.institutionName || "Government Client"
-                          } 👋`
-                        : "Welcome Back 👋"}
-                    </h1>
-                  </div>
-                  <p
-                    className={`text-sm ${
-                      isClient ? "text-base-content" : "opacity-85"
-                    }`}
-                  >
-                    {isClient
-                      ? "Monitor your projects and collaborate with our team"
-                      : "Stay updated with company activities"}
-                  </p>
-                </div>
-                <BuildingIcon
-                  className={`size-8 ${
-                    isClient ? "text-primary/40" : "opacity-80"
-                  } hidden md:block`}
-                />
+      <div className="container mx-auto px-4 sm:px-6 py-4">
+        <div
+          className={`rounded-xl p-4 shadow-md mb-6 ${
+            isClient
+              ? "bg-gradient-to-r from-primary/20 to-primary/10 border-l-4 border-primary"
+              : "bg-gradient-to-r from-primary to-secondary text-primary-content"
+          }`}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                {isClient ? (
+                  <Landmark className="size-5" />
+                ) : (
+                  <Briefcase className="size-5" />
+                )}
+                <h1 className="text-lg font-semibold">
+                  {isClient
+                    ? `Welcome, ${
+                        authUser?.institutionName || "Government Client"
+                      } 👋`
+                    : `Hi, ${authUser?.fullName?.split(" ")[0] || "Team"} 👋`}
+                </h1>
               </div>
+              <p
+                className={`text-sm ${
+                  isClient ? "text-base-content" : "opacity-85"
+                }`}
+              >
+                {isClient
+                  ? "Monitor your projects and collaborate with our team"
+                  : "Stay updated with company activities"}
+              </p>
             </div>
-            
-            {isEmployee && (
-              <div className="card bg-base-100 shadow rounded-xl">
-                <div className="card-body p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Briefcase className="size-5 text-primary" />
-                      </div>
-                      <div>
-                        <h2 className="text-base font-semibold">
-                          My Assigned Projects
-                        </h2>
-                        <p className="text-xs opacity-60">
-                          Projects assigned to you by clients
-                        </p>
-                      </div>
-                    </div>
-                    <span className="badge badge-primary badge-sm">
-                      {projects.length || 0}
-                    </span>
-                  </div>
+            <BuildingIcon
+              className={`size-8 ${
+                isClient ? "text-primary/40" : "opacity-80"
+              } hidden md:block`}
+            />
+          </div>
 
-                  {loadingProjects ? (
-                    <div className="flex justify-center py-6">
-                      <span className="loading loading-spinner loading-md text-primary" />
-                    </div>
-                  ) : projects.length === 0 ? (
-                    <div className="text-center py-8 opacity-70">
-                      <p className="text-sm">No projects assigned yet</p>
-                      <p className="text-xs mt-1">
-                        Clients will assign projects to you here
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="grid gap-4">
-                      {projects.map((project) => (
-                        <div
-                          key={project._id}
-                          className="card bg-base-100 border border-base-300 p-4 hover:shadow-md transition"
-                        >
-                          <div className="flex justify-between items-start mb-2">
-                            <div>
-                              <h4 className="font-medium text-sm">
-                                {project.title}
-                              </h4>
-                              {project.client && (
-                                <p className="text-xs opacity-70 mt-1">
-                                  Client: {project.client.fullName}
-                                  {project.client.institutionName &&
-                                    ` (${project.client.institutionName})`}
-                                </p>
-                              )}
-                            </div>
-                            <span
-                              className={`badge badge-sm ${
-                                project.status === "completed"
-                                  ? "badge-success"
-                                  : project.status === "active"
-                                  ? "badge-warning"
-                                  : "badge-info"
-                              }`}
-                            >
-                              {project.status}
-                            </span>
-                          </div>
-
-                          <p className="text-xs opacity-70 mb-3 line-clamp-2">
-                            {project.description}
-                          </p>
-
-                          <div className="flex justify-between items-center text-xs opacity-60 mb-3">
-                            <div className="flex items-center gap-1">
-                              <Calendar className="size-3" />
-                              <span>
-                                {new Date(
-                                  project.createdAt
-                                ).toLocaleDateString()}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <UsersIcon className="size-3" />
-                              <span>
-                                {project.employees?.length || 1} team members
-                              </span>
-                            </div>
-                          </div>
-
-                          <ProjectProgressUpdate project={project} />
-                        </div>
-                      ))}
-                    </div>
-                  )}
+          {/* Tabs Navigation - Hanya untuk Employee/Admin */}
+          {!isClient && (
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+              <button
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  activeTab === "feed"
+                    ? "bg-base-100 text-primary shadow-sm"
+                    : "bg-base-100/50 text-base-content/70 hover:bg-base-100"
+                }`}
+                onClick={() => setActiveTab("feed")}
+              >
+                <div className="flex items-center gap-1.5">
+                  <Home className="size-3.5" />
+                  <span>Feed</span>
                 </div>
-              </div>
-            )}
-            {/* Stories Preview - HIDDEN untuk client */}
-            {!isClient && (
-              <div className="card bg-base-100 shadow rounded-xl">
-                <div className="card-body p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
-                        <Camera className="size-3.5 text-base-100" />
-                      </div>
-                      <div>
-                        <h2 className="text-sm font-semibold">Stories</h2>
-                        <p className="text-xs opacity-60">Latest moments</p>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={() => setShowCreateStory(true)}
-                      className="btn btn-primary btn-xs"
-                    >
-                      <Camera className="size-3 mr-1" />
-                      Create Stories
-                    </button>
-                  </div>
-
-                  {stories.length === 0 ? (
-                    <div className="text-center py-6">
-                      <div className="w-16 h-16 mx-auto mb-3 bg-base-200 rounded-full flex items-center justify-center">
-                        <Camera className="size-6 opacity-40" />
-                      </div>
-                      <p className="text-sm opacity-70 mb-3">
-                        No stories from your colleagues yet
-                      </p>
-                      <button
-                        onClick={() => setShowCreateStory(true)}
-                        className="btn btn-outline btn-sm"
-                      >
-                        Be the first to share!
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-thin">
-                      {/* Create Story Card */}
-                      <div className="flex-shrink-0">
-                        <button
-                          onClick={() => setShowCreateStory(true)}
-                          className="flex flex-col items-center group"
-                        >
-                          <div className="relative mb-2">
-                            <div className="w-20 h-20 rounded-full border-2 border-dashed border-gray-300 group-hover:border-primary transition-colors flex items-center justify-center">
-                              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-primary/20 to-secondary/20 flex items-center justify-center">
-                                <Camera className="size-6 text-primary" />
-                              </div>
-                            </div>
-                            <div className="absolute bottom-0 right-0 w-6 h-6 bg-primary rounded-full flex items-center justify-center border-2 border-base-100">
-                              <span className="text-xs text-base-100 font-bold">
-                                +
-                              </span>
-                            </div>
-                          </div>
-                          <span className="text-xs font-medium">Add Story</span>
-                        </button>
-                      </div>
-
-                      {/* Colleagues' Stories */}
-                      {stories.map((userStories, userIndex) => {
-                        const user = userStories.user;
-                        const userStoryCount = userStories.stories?.length || 0;
-                        const hasUnviewed = userStories.hasUnviewed || false;
-
-                        return (
-                          <div key={user._id} className="flex-shrink-0">
-                            <button
-                              onClick={() => handleOpenStories(userIndex, 0)}
-                              className="flex flex-col items-center group relative"
-                            >
-                              <div className="relative mb-2">
-                                <div
-                                  className={`w-16 h-16 rounded-full p-0.5 ${
-                                    hasUnviewed
-                                      ? "bg-gradient-to-r from-primary to-secondary"
-                                      : "bg-gradient-to-r from-gray-300 to-gray-400"
-                                  }`}
-                                >
-                                  <div className="w-full h-full rounded-full overflow-hidden border border-base-100">
-                                    <img
-                                      src={
-                                        user.profilePic || "/default-avatar.png"
-                                      }
-                                      alt={user.fullName}
-                                      className="w-full h-full object-cover"
-                                      onError={(e) => {
-                                        e.target.src = "/default-avatar.png";
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-
-                                {userStoryCount > 0 && (
-                                  <div className="absolute -top-1 -right-1 w-6 h-6 bg-primary rounded-full flex items-center justify-center border-2 border-base-100">
-                                    <span className="text-xs text-base-100 font-bold">
-                                      {userStoryCount}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                              <span className="text-[11px] font-medium truncate max-w-16">
-                                {user.fullName}
-                              </span>
-
-                              {hasUnviewed && (
-                                <div className="absolute -top-1 -left-1 w-3 h-3 bg-primary rounded-full animate-pulse"></div>
-                              )}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Stories Stats */}
-                  {stories.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-base-300">
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <UsersIcon className="size-4 opacity-70" />
-                          <span>
-                            {stories.length}{" "}
-                            {stories.length === 1
-                              ? "colleague has"
-                              : "colleagues have"}{" "}
-                            stories
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Clock className="size-4 opacity-70" />
-                          <span>24h remaining</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+              </button>
+              <button
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  activeTab === "projects"
+                    ? "bg-base-100 text-primary shadow-sm"
+                    : "bg-base-100/50 text-base-content/70 hover:bg-base-100"
+                }`}
+                onClick={() => setActiveTab("projects")}
+              >
+                <div className="flex items-center gap-1.5">
+                  <FolderOpen className="size-3.5" />
+                  <span>Projects</span>
                 </div>
-              </div>
-            )}
-            {/* Create Post - HIDDEN untuk client */}
-            {!isClient && (
-              <div className="card bg-base-100 shadow rounded-xl">
-                <div className="card-body p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                      <MessageSquare className="size-4 text-primary-content" />
-                    </div>
-                    <div>
-                      <h2 className="text-sm font-semibold">Create Post</h2>
-                      <p className="text-xs opacity-60">
-                        Share updates with the team
-                      </p>
-                    </div>
-                  </div>
+              </button>
+            </div>
+          )}
+        </div>
 
-                  <PostForm />
-                </div>
-              </div>
-            )}
-            {/* Untuk Client: Project Overview */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
             {isClient && (
-              <div className="card bg-base-100 shadow rounded-xl">
-                <div className="card-body p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Target className="size-5 text-primary" />
-                      </div>
-                      <div>
-                        <h2 className="text-base font-semibold">
-                          Active Projects
-                        </h2>
-                        <p className="text-xs opacity-60">
-                          Monitor your ongoing projects
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="badge badge-primary badge-sm">
-                        {projects.length || 0}
-                      </span>
-                      <button
-                        onClick={() => setShowProjectModal(true)}
-                        className="btn btn-primary btn-sm"
-                      >
-                        <FileText className="size-4 mr-1" />
-                        New Project
-                      </button>
-                    </div>
-                  </div>
-
-                  {loadingProjects ? (
-                    <div className="flex justify-center py-6">
-                      <span className="loading loading-spinner loading-md text-primary" />
-                    </div>
-                  ) : projects.length === 0 ? (
-                    <div className="text-center py-8 opacity-70">
-                      <p className="text-sm">No active projects yet</p>
-                      <p className="text-xs mt-1">
-                        Projects assigned to you will appear here
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="grid gap-4">
-                      {projects.map((project) => (
-                        <div
-                          key={project._id}
-                          className="card bg-base-100 border border-base-300 p-4 hover:shadow-md transition"
-                        >
-                          <div className="flex justify-between items-start mb-2">
-                            <div>
-                              <h4 className="font-medium text-sm">
-                                {project.title}
-                              </h4>
-                              {project.employees &&
-                                project.employees.length > 0 && (
-                                  <p className="text-xs opacity-70 mt-1">
-                                    Team:{" "}
-                                    {project.employees
-                                      .map((e) => e.fullName)
-                                      .join(", ")}
-                                  </p>
-                                )}
-                            </div>
-                            <span
-                              className={`badge badge-sm ${
-                                project.status === "completed"
-                                  ? "badge-success"
-                                  : project.status === "active"
-                                  ? "badge-warning"
-                                  : "badge-info"
-                              }`}
-                            >
-                              {project.status}
-                            </span>
-                          </div>
-
-                          <p className="text-xs opacity-70 mb-3 line-clamp-2">
-                            {project.description}
-                          </p>
-
-                          {/* Progress untuk Client */}
-                          <div className="mt-3">
-                            <div className="flex justify-between items-center mb-2">
-                              <div className="flex items-center gap-2">
-                                <TrendingUp className="size-4 text-primary" />
-                                <span className="text-xs font-medium">
-                                  Current Progress
-                                </span>
-                              </div>
-                              <span className="text-sm font-semibold">
-                                {project.progress || 0}%
-                              </span>
-                            </div>
-
-                            <progress
-                              className="progress progress-primary w-full"
-                              value={project.progress || 0}
-                              max="100"
-                            ></progress>
-
-                            <div className="flex justify-between text-xs opacity-60 mt-2">
-                              <span>Updated by team</span>
-                              <span>
-                                Last updated:{" "}
-                                {new Date(
-                                  project.updatedAt
-                                ).toLocaleDateString()}
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="flex justify-between items-center text-xs opacity-60 mt-3 pt-3 border-t border-base-300">
-                            <span>
-                              {new Date(project.createdAt).toLocaleDateString()}
-                            </span>
-                            <span>
-                              {project.employees?.length || 0} members
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-            {/* Timeline - Tampilkan semua untuk employee, hanya post terkait untuk client */}
-            <div className="card bg-base-100 shadow rounded-xl">
-              <div className="card-body p-4">
-                <div className="flex items-center justify-between mb-4">
+              <>
+                {/* Projects Header */}
+                <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-base font-semibold">
-                      {isClient ? "Project Updates" : "Recent Posts"}
-                    </h2>
+                    <h2 className="text-lg font-semibold">Your Projects</h2>
                     <p className="text-xs opacity-60">
-                      {isClient
-                        ? "Latest updates from your projects"
-                        : "Latest from the team"}
+                      Monitor and manage your projects
                     </p>
                   </div>
-
                   <div className="flex items-center gap-2">
-                    <span className="badge badge-primary badge-sm">
-                      {posts.length}
+                    <span className="badge badge-primary">
+                      {projects.length || 0}
                     </span>
+                    <button
+                      onClick={() => setShowProjectModal(true)}
+                      className="btn btn-primary btn-sm"
+                    >
+                      <PlusCircle className="size-4 mr-1" />
+                      New Project
+                    </button>
+                  </div>
+                </div>
+
+                {/* Projects Grid */}
+                {loadingProjects ? (
+                  <div className="flex justify-center py-12">
+                    <span className="loading loading-spinner loading-lg text-primary" />
+                  </div>
+                ) : projects.length === 0 ? (
+                  <div className="card bg-base-100 border border-dashed border-base-300 rounded-xl p-8 text-center">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-base-200 rounded-full flex items-center justify-center">
+                      <Target className="size-8 text-primary/60" />
+                    </div>
+                    <h3 className="font-medium mb-2">No projects yet</h3>
+                    <p className="text-sm opacity-70 mb-4">
+                      Create your first project to get started
+                    </p>
+                    <button
+                      onClick={() => setShowProjectModal(true)}
+                      className="btn btn-primary"
+                    >
+                      <FileText className="size-4 mr-1" />
+                      Create Project
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {projects.map((project) => (
+                      <ProjectCard key={project._id} project={project} />
+                    ))}
+                  </div>
+                )}
+
+                {/* Recent Updates Section */}
+                <div className="mt-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className="text-lg font-semibold">Project Updates</h2>
+                      <p className="text-xs opacity-60">
+                        Latest updates from your projects
+                      </p>
+                    </div>
                     <Link to="/posts" className="btn btn-outline btn-xs">
                       View all
                     </Link>
                   </div>
-                </div>
 
-                {loadingPosts ? (
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <span className="loading loading-spinner loading-lg text-primary mb-4" />
-                    <p className="opacity-70">Loading posts...</p>
-                  </div>
-                ) : posts.length === 0 ? (
-                  <div className="text-center py-12">
-                    <div className="w-20 h-20 mx-auto mb-4 bg-base-200 rounded-full flex items-center justify-center">
-                      <MessageSquare className="size-10 opacity-40" />
+                  {loadingPosts ? (
+                    <div className="flex justify-center py-8">
+                      <span className="loading loading-spinner loading-md text-primary" />
                     </div>
-                    <h3 className="text-lg font-semibold mb-2">
-                      {isClient ? "No project updates yet" : "No posts yet"}
-                    </h3>
-                    <p className="opacity-70 max-w-sm mx-auto">
-                      {isClient
-                        ? "Check back later for updates from the team"
-                        : "Be the first to share updates with the team!"}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-5">
-                    {posts
-                      ?.sort(
-                        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-                      )
-                      ?.slice(0, 5)
-                      ?.map((post) => (
-                        <PostCard key={post._id} post={post} />
+                  ) : posts.length === 0 ? (
+                    <div className="card bg-base-100 border border-base-300 rounded-xl p-6 text-center">
+                      <MessageSquare className="size-10 opacity-40 mx-auto mb-3" />
+                      <p className="text-sm opacity-70">
+                        No project updates yet
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {posts.slice(0, 3).map((post) => (
+                        <PostCard key={post._id} post={post} compact />
                       ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* ===== EMPLOYEE/ADMIN VIEW ===== */}
+            {!isClient && (
+              <>
+                {/* Feed Tab */}
+                {activeTab === "feed" && (
+                  <div className="space-y-6">
+                    {/* Create Post - SEPERTI DI AWAL */}
+                    <div className="card bg-base-100 shadow rounded-xl">
+                      <div className="card-body p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                            <MessageSquare className="size-4 text-primary-content" />
+                          </div>
+                          <div>
+                            <h2 className="text-sm font-semibold">
+                              Create Post
+                            </h2>
+                            <p className="text-xs opacity-60">
+                              Share updates with the team
+                            </p>
+                          </div>
+                        </div>
+
+                        <PostForm />
+                      </div>
+                    </div>
+
+                    {/* Stories Preview */}
+                    <StoriesPreview />
+
+                    {/* Recent Posts */}
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-semibold">Recent Posts</h3>
+                        <Link
+                          to="/posts"
+                          className="text-xs text-primary hover:underline"
+                        >
+                          View all
+                        </Link>
+                      </div>
+                      {loadingPosts ? (
+                        <div className="flex justify-center py-8">
+                          <span className="loading loading-spinner loading-md text-primary" />
+                        </div>
+                      ) : posts.length === 0 ? (
+                        <div className="text-center py-8 opacity-70">
+                          <p className="text-sm">No posts yet</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {posts.slice(0, 5).map((post) => (
+                            <PostCard key={post._id} post={post} />
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
-              </div>
-            </div>
+
+                {/* Projects Tab */}
+                {activeTab === "projects" && (
+                  <div className="space-y-6">
+                    <div className="card bg-base-100 shadow rounded-xl">
+                      <div className="card-body p-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                              <Briefcase className="size-5 text-primary" />
+                            </div>
+                            <div>
+                              <h2 className="text-base font-semibold">
+                                My Projects
+                              </h2>
+                              <p className="text-xs opacity-60">
+                                Projects assigned to you by clients
+                              </p>
+                            </div>
+                          </div>
+                          <span className="badge badge-primary">
+                            {projects.length || 0}
+                          </span>
+                        </div>
+
+                        {loadingProjects ? (
+                          <div className="flex justify-center py-12">
+                            <span className="loading loading-spinner loading-lg text-primary" />
+                          </div>
+                        ) : projects.length === 0 ? (
+                          <div className="card bg-base-100 border border-dashed border-base-300 rounded-xl p-8 text-center">
+                            <div className="w-16 h-16 mx-auto mb-4 bg-base-200 rounded-full flex items-center justify-center">
+                              <Briefcase className="size-8 text-primary/60" />
+                            </div>
+                            <h3 className="font-medium mb-2">
+                              No projects assigned yet
+                            </h3>
+                            <p className="text-sm opacity-70">
+                              Clients will assign projects to you here
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {projects.map((project) => (
+                              <ProjectCard
+                                key={project._id}
+                                project={project}
+                                showClientInfo
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Stories Tab */}
+              </>
+            )}
           </div>
 
-          {/* SIDEBAR */}
+          {/* SIDEBAR - 1/3 width */}
           <div className="space-y-6">
-            {/* FRIENDS/CONTACTS LIST */}
+            {/* Connections - HANYA SATU */}
             <div className="card bg-base-100 shadow-md rounded-xl">
               <div className="card-body p-4">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <h2 className="text-sm font-semibold">
-                      {isClient ? "Team Contacts" : "Connections"}
-                    </h2>
+                    <h3 className="text-sm font-semibold">
+                      {isClient ? "Team Contacts" : "Your Connections"}
+                    </h3>
                     <p className="text-xs opacity-60">
-                      {isClient
-                        ? `${friends.length} team members`
-                        : `${friends.length} connected`}
+                      {friends.length} {isClient ? "team members" : "connected"}
                     </p>
                   </div>
                   <Link to="/friends" className="btn btn-outline btn-xs">
-                    <UsersIcon className="size-4 mr-1" />
                     View All
                   </Link>
                 </div>
 
                 {loadingFriends ? (
-                  <div className="flex justify-center py-8">
-                    <span className="loading loading-spinner loading-md text-primary" />
+                  <div className="flex justify-center py-4">
+                    <span className="loading loading-spinner loading-sm text-primary" />
                   </div>
                 ) : friends.length === 0 ? (
-                  <NoFriendsFound />
+                  <NoFriendsFound compact />
                 ) : (
                   <div className="space-y-3">
+                    {/* HANYA TAMPILKAN 1 CONNECTION */}
                     {friends.slice(0, 1).map((friend) => (
-                      <div key={friend._id} className="group">
-                        <FriendCard friend={friend} />
-                      </div>
+                      <FriendCard key={friend._id} friend={friend} />
                     ))}
                   </div>
                 )}
               </div>
             </div>
 
-            {/* RECOMMENDED USERS/CONTACTS */}
+            {/* Suggested Connections */}
             <div className="card bg-base-100 shadow-md rounded-xl">
               <div className="card-body p-4">
-                <div className="flex items-center gap-3 p-2 border border-base-300 rounded-lg">
+                <div className="flex items-center gap-2 mb-4">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-success to-emerald-500 flex items-center justify-center">
                     <UserPlusIcon className="size-4 text-base-100" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold">
-                      {isAdmin
-                        ? "All Users"
-                        : isClient
-                        ? "Team Members"
-                        : "Suggested Colleagues"}
-                    </h2>
-
-                    <p className="text-sm opacity-70">
-                      {isAdmin
-                        ? "Manage and connect with all users"
-                        : isClient
-                        ? "Connect with employees working on your projects"
-                        : "Connect with clients you collaborate with"}
+                    <h3 className="text-sm font-semibold">
+                      {isClient ? "Team Members" : "Suggestions"}
+                    </h3>
+                    <p className="text-xs opacity-60">
+                      {isClient ? "Connect with team" : "Grow your network"}
                     </p>
                   </div>
-                  <Link to="/network" className="btn btn-outline btn-xs">
-                    <UsersIcon className="size-4 mr-1" />
-                    View All
-                  </Link>
                 </div>
 
                 {loadingUsers ? (
-                  <div className="flex justify-center py-8">
-                    <span className="loading loading-spinner loading-md text-primary" />
+                  <div className="flex justify-center py-4">
+                    <span className="loading loading-spinner loading-sm text-primary" />
                   </div>
                 ) : shuffledRecommendedUsers.length === 0 ? (
-                  <div className="text-center py-6">
-                    <div className="w-16 h-16 mx-auto mb-3 bg-base-200 rounded-full flex items-center justify-center">
-                      <UsersIcon className="size-6 opacity-40" />
-                    </div>
-                    <p className="text-sm opacity-70">
+                  <div className="text-center py-4 opacity-70">
+                    <p className="text-xs">
                       {isClient
                         ? "No team members available"
-                        : "No recommendations available"}
+                        : "No suggestions"}
                     </p>
                   </div>
                 ) : (
@@ -766,49 +887,28 @@ const HomePage = () => {
                       const hasRequestBeenSent = outgoingRequestsIds.has(
                         user._id
                       );
-
                       return (
                         <div
                           key={user._id}
-                          className="flex items-center gap-3 p-3 border border-base-300 rounded-xl hover:border-primary/30 transition-colors"
+                          className="flex items-center gap-3 p-2 border border-base-300 rounded-lg hover:border-primary/30 transition-colors"
                         >
-                          {/* Avatar */}
-                          <div className="relative">
-                            <div className="w-11 h-11 rounded-full overflow-hidden">
-                              <img
-                                src={user.profilePic || "/default-avatar.png"}
-                                alt={user.fullName}
-                                className="w-full h-full object-cover"
-                                onError={(e) =>
-                                  (e.target.src = "/default-avatar.png")
-                                }
-                              />
-                            </div>
-                          </div>
-
-                          {/* Info */}
+                          <img
+                            src={user.profilePic || "/default-avatar.png"}
+                            alt={user.fullName}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">
+                            <p className="text-xs font-medium truncate">
                               {user.fullName}
                             </p>
-
                             {user.position && (
-                              <p className="text-xs opacity-70 truncate">
+                              <p className="text-[10px] opacity-70 truncate">
                                 {user.position}
                               </p>
                             )}
-
-                            {user.department && (
-                              <span className="badge badge-secondary badge-sm mt-1">
-                                {getDepartmentIcon(user.department)}{" "}
-                                {user.department}
-                              </span>
-                            )}
                           </div>
-
-                          {/* Action */}
                           <button
-                            className={`btn btn-sm ${
+                            className={`btn btn-xs ${
                               hasRequestBeenSent
                                 ? "btn-disabled opacity-50"
                                 : "btn-outline btn-primary"
@@ -816,7 +916,7 @@ const HomePage = () => {
                             onClick={() => sendRequestMutation(user._id)}
                             disabled={hasRequestBeenSent || isPending}
                           >
-                            {hasRequestBeenSent ? "Requested" : "Add"}
+                            {hasRequestBeenSent ? "Sent" : "Add"}
                           </button>
                         </div>
                       );
@@ -827,63 +927,24 @@ const HomePage = () => {
             </div>
 
             {/* Quick Stats */}
-            <div className="bg-gradient-to-r from-primary/10 to-secondary/10 rounded-xl border border-primary/20 p-5">
-              <h3 className="font-bold mb-3">Your Network</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-base-100 p-3 rounded-lg border border-base-300">
-                  <div className="text-lg font-bold text-primary">
-                    {friends.length}
-                  </div>
-                  <div className="text-[11px] opacity-60">
-                    {isClient ? "Team Members" : "Connections"}
-                  </div>
-                </div>
-
-                {!isClient && (
-                  <>
-                    <div className="bg-base-100 p-3 rounded-lg border border-base-300">
-                      <div className="text-2xl font-bold text-secondary">
-                        {posts.length}
-                      </div>
-                      <div className="text-xs opacity-70">Posts</div>
-                    </div>
-                    <div className="bg-base-100 p-3 rounded-lg border border-base-300">
-                      <div className="text-2xl font-bold text-accent">
-                        {stories.length}
-                      </div>
-                      <div className="text-xs opacity-70">Active Stories</div>
-                    </div>
-                  </>
-                )}
-
-                <div className="bg-base-100 p-3 rounded-lg border border-base-300">
-                  <div className="text-2xl font-bold text-info">
-                    {shuffledRecommendedUsers.length}
-                  </div>
-                  <div className="text-xs opacity-70">
-                    {isClient ? "Team" : "Suggestions"}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <QuickStats />
           </div>
         </div>
       </div>
 
-      {/* Floating Action Button - Hanya untuk employee */}
-      {!isClient && (
-        <button
-          onClick={() => setShowCreateStory(true)}
-          className="fixed bottom-5 right-5 w-12 h-12 bg-gradient-to-r from-primary to-secondary rounded-full shadow-md flex items-center justify-center z-40"
-        >
-          <Camera className="size-6 text-base-100" />
-        </button>
-      )}
-
+      {/* Modals */}
       {showCreateStory && (
         <StoryCreateModal
           isOpen={showCreateStory}
           onClose={() => setShowCreateStory(false)}
+        />
+      )}
+
+      {showNoteModal && (
+        <ProjectNoteModal
+          projectId={selectedProjectId}
+          isOpen={showNoteModal}
+          onClose={() => setShowNoteModal(false)}
         />
       )}
 
@@ -898,12 +959,37 @@ const HomePage = () => {
       {showProjectModal && (
         <ProjectCreateModal
           isOpen={showProjectModal}
-          onClose={() => {
-            console.log("Closing modal");
-            setShowProjectModal(false);
-          }}
+          onClose={() => setShowProjectModal(false)}
           availableEmployees={availableEmployees}
         />
+      )}
+
+      {/* Post Form Modal */}
+      <dialog id="post-form-modal" className="modal">
+        <div className="modal-box max-w-2xl">
+          <form method="dialog">
+            <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">
+              ✕
+            </button>
+          </form>
+          <PostForm
+            onClose={() => document.getElementById("post-form-modal")?.close()}
+            initialType={postFormType}
+          />
+        </div>
+        <form method="dialog" className="modal-backdrop">
+          <button>close</button>
+        </form>
+      </dialog>
+
+      {/* FAB for Stories - Mobile */}
+      {!isClient && (
+        <button
+          onClick={() => setShowCreateStory(true)}
+          className="lg:hidden fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-primary to-secondary rounded-full shadow-xl flex items-center justify-center z-40"
+        >
+          <Camera className="size-6 text-base-100" />
+        </button>
       )}
     </div>
   );

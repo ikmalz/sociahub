@@ -25,6 +25,97 @@ export async function getAllUsers() {
   return response.data;
 }
 
+export const getAllProjects = async () => {
+  try {
+    console.log("🔄 [API] Fetching all projects...");
+    
+    try {
+      const adminRes = await axiosInstance.get("/admin/projects");
+      console.log("✅ Admin endpoint response:", {
+        success: adminRes.data?.success,
+        count: adminRes.data?.projects?.length || 0
+      });
+      
+      if (adminRes.data?.success && Array.isArray(adminRes.data.projects)) {
+        return adminRes.data.projects;
+      }
+    } catch (adminError) {
+      console.log("⚠️ Admin endpoint failed, trying regular endpoint...");
+    }
+    
+    const res = await axiosInstance.get("/projects");
+    console.log("📊 Regular endpoint response:", {
+      data: res.data,
+      hasProjects: !!res.data?.projects,
+      count: res.data?.projects?.length || 0
+    });
+    
+    if (res.data && res.data.success !== undefined) {
+      return res.data.projects || [];
+    } else if (Array.isArray(res.data)) {
+      return res.data;
+    } else if (res.data && Array.isArray(res.data.projects)) {
+      return res.data.projects;
+    }
+    
+    console.warn("⚠️ Unexpected response structure:", res.data);
+    return [];
+  } catch (error) {
+    console.error("❌ Error fetching all projects:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      url: error.config?.url
+    });
+    return [];
+  }
+};
+
+export const getAdminAllProjects = async () => {
+  try {
+    console.log("🔄 [API] Fetching admin projects...");
+    const res = await axiosInstance.get("/admin/projects");
+    
+    console.log("✅ Admin projects response:", {
+      success: res.data?.success,
+      count: res.data?.count,
+      projectsLength: res.data?.projects?.length || 0
+    });
+    
+    if (res.data?.success && Array.isArray(res.data.projects)) {
+      console.log(`✅ Found ${res.data.projects.length} projects for admin`);
+      return res.data.projects;
+    }
+    
+    if (res.data?.projects) {
+      return res.data.projects;
+    }
+    
+    return [];
+  } catch (error) {
+    console.error("❌ Error in getAdminAllProjects:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      url: error.config?.url
+    });
+    
+    try {
+      const fallbackRes = await axiosInstance.get("/projects");
+      if (fallbackRes.data?.projects) {
+        return fallbackRes.data.projects;
+      }
+      if (Array.isArray(fallbackRes.data)) {
+        return fallbackRes.data;
+      }
+    } catch (fallbackError) {
+      console.error("Fallback also failed:", fallbackError.message);
+    }
+    
+    return [];
+  }
+};
+
 export const getAuthUser = async () => {
   try {
     const res = await axiosInstance.get("/auth/me");
@@ -91,9 +182,23 @@ export const getMyProjects = async () => {
 export const getPosts = async () => {
   try {
     const res = await axiosInstance.get("/posts");
-    return res.data.posts || [];
+    console.log("📊 API Response for /posts:", res.data);
+    
+    if (Array.isArray(res.data)) {
+      console.log(`✅ Found ${res.data.length} posts`);
+      return res.data;
+    }
+    
+    if (res.data && Array.isArray(res.data.posts)) {
+      console.log(`✅ Found ${res.data.posts.length} posts in posts property`);
+      return res.data.posts;
+    }
+    
+    console.warn("⚠️ Unexpected response structure:", res.data);
+    return [];
   } catch (error) {
-    console.error("Error fetching posts:", error);
+    console.error("❌ Error fetching posts:", error);
+    console.error("Error response:", error.response?.data);
     return [];
   }
 };
@@ -368,6 +473,78 @@ export async function rejectUser(userId) {
   return response.data;
 }
 
+// Project Notes API
+export const addProjectNote = async (projectId, note) => {
+  try {
+    const res = await axiosInstance.post(`/projects/${projectId}/notes`, { note });
+    return res.data;
+  } catch (error) {
+    console.error("Error adding project note:", error);
+    throw error;
+  }
+};
+
+export const getProjectNotes = async (projectId) => {
+  try {
+    const res = await axiosInstance.get(`/projects/${projectId}/notes`);
+    return res.data;
+  } catch (error) {
+    console.error("Error fetching project notes:", error);
+    throw error;
+  }
+};
+
+export const addTaskNote = async (taskId, note) => {
+  try {
+    const res = await axiosInstance.post(`/projects/tasks/${taskId}/notes`, { note });
+    return res.data;
+  } catch (error) {
+    console.error("Error adding task note:", error);
+    throw error;
+  }
+};
+
+export const getTaskNotes = async (taskId) => {
+  try {
+    const res = await axiosInstance.get(`/projects/tasks/${taskId}/notes`);
+    return res.data;
+  } catch (error) {
+    console.error("Error fetching task notes:", error);
+    throw error;
+  }
+};
+
+export const deleteProjectNote = async (projectId, noteId) => {
+  try {
+    const res = await axiosInstance.delete(`/projects/${projectId}/notes/${noteId}`);
+    return res.data;
+  } catch (error) {
+    console.error("Error deleting project note:", error);
+    throw error;
+  }
+};
+
+export const markProjectAsComplete = async (projectId) => {
+  try {
+    const res = await axiosInstance.patch(`/projects/${projectId}/complete`);
+    return res.data;
+  } catch (error) {
+    console.error("Error marking project as complete:", error);
+    throw error;
+  }
+};
+
+export const updateProjectStatus = async (projectId, status) => {
+  try {
+    const res = await axiosInstance.put(`/projects/${projectId}/progress`, {
+      progress: status === "completed" ? 100 : 0,
+    });
+    return res.data;
+  } catch (error) {
+    console.error("Error updating project status:", error);
+    throw error;
+  }
+};
 // HAPUS YANG INI KARENA SUDAH ADA DI ATAS
 // export const getPostById = async (postId) => {
 //   const response = await fetch(`${API_BASE}/api/posts/${postId}`, {

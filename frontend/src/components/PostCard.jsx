@@ -817,7 +817,7 @@ const PostCard = ({
                   <Heart
                     className={`size-4 ${
                       post.likes?.includes(currentUserId)
-                        ? "fill-red-500 text-red-500"
+                        ? "fill-error text-error"
                         : ""
                     }`}
                   />
