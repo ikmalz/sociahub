@@ -360,12 +360,12 @@ const PostCard = ({
                       </span>
                     </button>
 
-                    <div className="flex items-center gap-2">
+                    {/* <div className="flex items-center gap-2">
                       <MessageCircle className="size-5 text-neutral" />
                       <span className="text-sm font-medium tabular-nums">
                         {commentCount}
                       </span>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </>
@@ -562,7 +562,7 @@ const PostCard = ({
                   <span className="text-xs font-medium">{likeCount || 0}</span>
                 </button>
 
-                <Link
+                {/* <Link
                   to={`/post/${post._id}`}
                   className="flex items-center gap-1.5 btn btn-ghost btn-xs p-1 min-h-0 h-auto hover:bg-base-200 text-base-content/70"
                   onClick={(e) => e.stopPropagation()}
@@ -571,7 +571,7 @@ const PostCard = ({
                   <span className="text-xs font-medium">
                     {commentCount || 0}
                   </span>
-                </Link>
+                </Link> */}
               </div>
             </div>
           </div>
@@ -824,10 +824,10 @@ const PostCard = ({
                   <span className="text-xs">{likeCount}</span>
                 </button>
 
-                <button className="flex items-center gap-1 btn btn-ghost btn-xs">
+                {/* <button className="flex items-center gap-1 btn btn-ghost btn-xs">
                   <MessageCircle className="size-4" />
                   <span className="text-xs">{commentCount}</span>
-                </button>
+                </button> */}
               </div>
             </div>
           </div>

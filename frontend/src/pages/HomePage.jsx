@@ -202,20 +202,77 @@ const HomePage = () => {
     .sort(() => 0.5 - Math.random())
     .slice(0, 3);
 
-  // ==================== REUSABLE COMPONENTS ====================
-
-  // Project Card Component
   const ProjectCard = ({ project, showClientInfo = false }) => {
     const isExpanded = expandedProjects[project._id];
     const isCompleted = project.status === "completed";
     const isAssigned =
       isEmployee && project.employees?.some((emp) => emp._id === authUser?._id);
     const isClientProject = isClient && project.client?._id === authUser?._id;
-    const canMarkComplete = (isAssigned || isClientProject) && !isCompleted;
+
+    const canMarkComplete = isAssigned && !isCompleted && isEmployee;
+
+    const renderClientProgressBar = () => {
+      const progress = project.progress || 0;
+
+      return (
+        <div className="mb-3">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs opacity-70">Progress</span>
+            <span className="text-xs font-medium">{progress}%</span>
+          </div>
+          <div className="w-full bg-base-300 rounded-full h-2">
+            <div
+              className="bg-primary h-2 rounded-full transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+        </div>
+      );
+    };
+
+    const renderEmployeeProgressSection = () => {
+      const progress = project.progress || 0;
+
+      return (
+        <div className="mb-3">
+          {/* Progress bar untuk employee */}
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs opacity-70">Progress</span>
+            <span className="text-xs font-medium">{progress}%</span>
+          </div>
+          <div className="w-full bg-base-300 rounded-full h-2 mb-2">
+            <div
+              className="bg-primary h-2 rounded-full transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+
+          {isAssigned && <ProjectProgressUpdate project={project} compact />}
+        </div>
+      );
+    };
+
+    const renderAdminProgressBar = () => {
+      const progress = project.progress || 0;
+
+      return (
+        <div className="mb-3">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs opacity-70">Progress</span>
+            <span className="text-xs font-medium">{progress}%</span>
+          </div>
+          <div className="w-full bg-base-300 rounded-full h-2">
+            <div
+              className="bg-primary h-2 rounded-full transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+        </div>
+      );
+    };
 
     return (
       <div className="card bg-base-100 border border-base-300 p-4 hover:shadow-md transition">
-        {/* Header */}
         <div className="flex justify-between items-start mb-3">
           <div className="flex-1 min-w-0">
             <h4 className="font-medium text-sm mb-1">{project.title}</h4>
@@ -242,6 +299,7 @@ const HomePage = () => {
                 Complete
               </button>
             )}
+
             <span
               className={`badge badge-xs ${
                 isCompleted
@@ -258,12 +316,11 @@ const HomePage = () => {
 
         {/* Progress/Completed Status */}
         {!isCompleted ? (
-          <div className="mb-3">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs opacity-70">Progress</span>
-            </div>
-            {isEmployee && <ProjectProgressUpdate project={project} compact />}
-          </div>
+          <>
+            {isClient && renderClientProgressBar()}
+            {isEmployee && renderEmployeeProgressSection()}
+            {isAdmin && renderAdminProgressBar()}
+          </>
         ) : (
           <div className="bg-success/10 border border-success/20 rounded-lg p-3 mb-3">
             <div className="flex items-center gap-2 text-success">
@@ -359,7 +416,6 @@ const HomePage = () => {
             {/* Stories List - lebih kecil dengan margin atas */}
             <div className="relative mt-2">
               <div className="flex gap-2.5 md:gap-3 overflow-x-auto pb-3 md:pb-4 scrollbar-thin -mx-1 px-1">
-                {/* Create Story Card - diturunkan */}
                 <div className="flex-shrink-0 pt-1">
                   <button
                     onClick={() => setShowCreateStory(true)}
@@ -383,7 +439,6 @@ const HomePage = () => {
                   </button>
                 </div>
 
-                {/* Colleagues' Stories - diturunkan */}
                 {stories.map((userStories, userIndex) => {
                   const user = userStories.user;
                   const userStoryCount = userStories.stories?.length || 0;
@@ -570,7 +625,6 @@ const HomePage = () => {
             />
           </div>
 
-          {/* Tabs Navigation - Hanya untuk Employee/Admin */}
           {!isClient && (
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
               <button
@@ -586,19 +640,22 @@ const HomePage = () => {
                   <span>Feed</span>
                 </div>
               </button>
-              <button
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  activeTab === "projects"
-                    ? "bg-base-100 text-primary shadow-sm"
-                    : "bg-base-100/50 text-base-content/70 hover:bg-base-100"
-                }`}
-                onClick={() => setActiveTab("projects")}
-              >
-                <div className="flex items-center gap-1.5">
-                  <FolderOpen className="size-3.5" />
-                  <span>Projects</span>
-                </div>
-              </button>
+
+              {isEmployee && (
+                <button
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    activeTab === "projects"
+                      ? "bg-base-100 text-primary shadow-sm"
+                      : "bg-base-100/50 text-base-content/70 hover:bg-base-100"
+                  }`}
+                  onClick={() => setActiveTab("projects")}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <FolderOpen className="size-3.5" />
+                    <span>Projects</span>
+                  </div>
+                </button>
+              )}
             </div>
           )}
         </div>
