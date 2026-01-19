@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React from "react";
 import { acceptFriendRequest, getFriendRequests } from "../lib/api";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
 import {
   BellIcon,
   ClockIcon,
@@ -13,6 +15,9 @@ import {
 } from "lucide-react";
 import NoNotificationsFound from "../components/NoNotificationsFound";
 import { useEffect } from "react";
+import { useNavigate } from "react-router";
+
+dayjs.extend(relativeTime);
 
 const NotificationsPage = () => {
   const queryClient = useQueryClient();
@@ -32,6 +37,23 @@ const NotificationsPage = () => {
 
   const incomingRequest = friendRequests?.incomingReqs || [];
   const acceptedRequests = friendRequests?.acceptedReqs || [];
+  const [chatNotifs, setChatNotifs] = React.useState([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const load = () => {
+      const stored =
+        JSON.parse(localStorage.getItem("chatNotifications")) || [];
+      setChatNotifs(stored);
+    };
+
+    load();
+    window.addEventListener("chat-notification", load);
+
+    return () => {
+      window.removeEventListener("chat-notification", load);
+    };
+  }, []);
 
   useEffect(() => {
     acceptedRequests.forEach((notif) => {
@@ -83,15 +105,24 @@ const NotificationsPage = () => {
     return info;
   };
 
-  // Tambahkan setelah acceptedRequests
   console.log("🔍 DEBUG Accepted Requests Data:", {
     acceptedRequests,
     count: acceptedRequests.length,
     firstItem: acceptedRequests[0],
     firstRecipient: acceptedRequests[0]?.recipient,
     isRecipientCurrentUser:
-      acceptedRequests[0]?.recipient?._id === "YOUR_USER_ID", // Ganti dengan ID Anda
+      acceptedRequests[0]?.recipient?._id === "YOUR_USER_ID",
   });
+
+  useEffect(() => {
+  if (location.pathname === "/notifications") {
+    const stored =
+      JSON.parse(localStorage.getItem("chatNotifications")) || [];
+
+    window.dispatchEvent(new Event("chat-notification"));
+  }
+}, []);
+
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -198,7 +229,76 @@ const NotificationsPage = () => {
               </section>
             )}
 
-            {/* ACCEPTED REQUESTS NOTIFICATIONS */}
+            {chatNotifs.length > 0 && (
+              <section className="space-y-4">
+                <h2 className="text-xl font-semibold flex items-center gap-2">
+                  <MessageSquareIcon className="h-5 w-5 text-info" />
+                  New Messages
+                  <span className="badge badge-info ml-2">
+                    {chatNotifs.length}
+                  </span>
+                </h2>
+
+                <div className="space-y-3">
+                  {chatNotifs.map((notif) => (
+                    <div
+                      key={notif.id}
+                      onClick={() => {
+                        const updated = chatNotifs.filter(
+                          (n) => n.channelId !== notif.channelId,
+                        );
+                        localStorage.setItem(
+                          "chatNotifications",
+                          JSON.stringify(updated),
+                        );
+                        setChatNotifs(updated);
+                        window.dispatchEvent(new Event("chat-notification"));
+
+                        navigate(`/chat/${notif.senderId}`);
+                      }}
+                      className="card bg-base-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                    >
+                      <div className="card-body p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="avatar">
+                            <div className="w-12 h-12 rounded-full bg-base-300">
+                              <img
+                                src={notif.senderImage || "/default-avatar.png"}
+                                alt={notif.senderName}
+                                className="object-cover"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold">
+                                {notif.senderName || "New Message"}
+                              </h3>
+
+                              {notif.count > 1 && (
+                                <span className="badge badge-error badge-sm">
+                                  {notif.count}
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="text-sm opacity-80 line-clamp-2">
+                              {notif.lastMessage || "Sent you a message"}
+                            </p>
+
+                            <p className="text-xs opacity-60 mt-1">
+                              {dayjs(notif.createdAt).fromNow()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* ACCEPTED REQUESTS NOTIFICATIONS */}
             {acceptedRequests.length > 0 && (
               <section className="space-y-4">
@@ -266,7 +366,7 @@ const NotificationsPage = () => {
 
                               <p className="text-xs flex items-center opacity-70 mt-2">
                                 <ClockIcon className="h-3 w-3 mr-1" />
-                                Connected
+                                {dayjs(notification.createdAt).fromNow()}
                               </p>
                             </div>
                             <div className="badge badge-success gap-1">

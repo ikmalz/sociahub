@@ -50,10 +50,9 @@ const ChatPage = () => {
             name: authUser.fullName,
             image: authUser.profilePic,
           },
-          tokenData.token
+          tokenData.token,
         );
 
-        //
         const channelId = [authUser._id, targetUserId].sort().join("-");
 
         const currChannel = client.channel("messaging", channelId, {
@@ -66,17 +65,30 @@ const ChatPage = () => {
         setChannel(currChannel);
       } catch (error) {
         console.log("Error initializing chat:", error);
-        toast.error("Could not connect to chat. Please try again.")
+        toast.error("Could not connect to chat. Please try again.");
       } finally {
         setLoading(false);
       }
     };
 
     initChat();
-  }, [tokenData, authUser,targetUserId]);
+  }, [tokenData, authUser, targetUserId]);
+
+  useEffect(() => {
+    if (!channel) return;
+
+    const existing =
+      JSON.parse(localStorage.getItem("chatNotifications")) || [];
+
+    const filtered = existing.filter((n) => n.channelId !== channel.id);
+
+    localStorage.setItem("chatNotifications", JSON.stringify(filtered));
+
+    window.dispatchEvent(new Event("chat-notification"));
+  }, [channel, targetUserId]);
 
   const handleVideoCall = () => {
-    if(channel) {
+    if (channel) {
       const callUrl = `${window.location.origin}/call/${channel.id}`;
 
       channel.sendMessage({
@@ -85,26 +97,27 @@ const ChatPage = () => {
 
       toast.success("Video call link sent successfully!");
     }
-  }
+  };
 
-  if(loading || !chatClient || !channel) return <ChatLoader />
+  if (loading || !chatClient || !channel) return <ChatLoader />;
 
-  return <div className="h-[93vh]">
-    <Chat client={chatClient}>
-      <Channel channel={channel}>
-        <div className="w-full relative">
-          <CallButton handleVideoCall={handleVideoCall} />
-          <Window>
-            <ChannelHeader />
-            <MessageList />
-            <MessageInput focus />
-          </Window>
-        </div>
-        <Thread/>
-      </Channel>
-    </Chat>
-    
-  </div>;
+  return (
+    <div className="h-[93vh]">
+      <Chat client={chatClient}>
+        <Channel channel={channel}>
+          <div className="w-full relative">
+            <CallButton handleVideoCall={handleVideoCall} />
+            <Window>
+              <ChannelHeader />
+              <MessageList />
+              <MessageInput focus />
+            </Window>
+          </div>
+          <Thread />
+        </Channel>
+      </Chat>
+    </div>
+  );
 };
 
 export default ChatPage;

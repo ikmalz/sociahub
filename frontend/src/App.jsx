@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import HomePage from "./pages/HomePage.jsx";
 import SignUpPage from "./pages/SignUpPage.jsx";
@@ -7,7 +7,7 @@ import NotificationsPage from "./pages/NotificationsPage.jsx";
 import CallPage from "./pages/CallPage.jsx";
 import ChatPage from "./pages/ChatPage.jsx";
 import PostsPage from "./pages/PostsPage.jsx";
-import { Toaster } from "react-hot-toast";
+import { Toaster, toast } from "react-hot-toast";
 import PageLoader from "./components/PageLoader.jsx";
 import OnBoardingPage from "./pages/OnboardingPage.jsx";
 import useAuthUser from "./hooks/useAuthUser.js";
@@ -24,10 +24,75 @@ import UserProfilePage from "./pages/UserProfilePage.jsx";
 import NetworkPage from "./pages/NetworkPage.jsx";
 import AdminAssignEmployeePage from "./pages/AdminAssignEmployeePage.jsx";
 import AdminProgressPage from "./pages/AdminProgressPage.jsx";
+import useChatNotifications from "./hooks/useChatNotifications.js";
 
 const App = () => {
   const { isLoading, authUser } = useAuthUser();
   const { theme } = useThemeStore();
+  useChatNotifications();
+
+  useEffect(() => {
+    const handler = (e) => {
+      const { senderName, text, senderImage } = e.detail;
+
+      const isMobile = window.innerWidth < 640;
+
+      toast.custom(
+        (t) => (
+          <div
+            className={`
+            transform transition-all duration-500 ease-out
+            ${
+              t.visible
+                ? "translate-y-0 opacity-100"
+                : isMobile
+                  ? "translate-y-6 opacity-0"
+                  : "-translate-y-6 opacity-0"
+            }
+            bg-white dark:bg-base-200 shadow-xl rounded-2xl p-3 sm:p-4 flex gap-3 items-start border border-base-300 w-[92vw] sm:min-w-[280px] sm:max-w-sm animate-pulse-once`}
+          >
+            {/* Avatar */}
+            <div className="avatar flex-shrink-0">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-base-300 overflow-hidden">
+                <img
+                  src={senderImage || "/default-avatar.png"}
+                  alt={senderName}
+                  className="object-cover w-full h-full"
+                  onError={(e) => (e.target.src = "/default-avatar.png")}
+                />
+              </div>
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm leading-tight truncate">
+                {senderName || "New message"}
+              </p>
+
+              <p className="text-xs opacity-80 mt-0.5 line-clamp-2">
+                {text || "Sent you a message"}
+              </p>
+
+              <p className="text-[10px] opacity-50 mt-1">just now</p>
+            </div>
+
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="text-xs opacity-40 hover:opacity-80 transition px-1"
+            >
+              ✕
+            </button>
+          </div>
+        ),
+        {
+          position: isMobile ? "bottom-center" : "top-center",
+          duration: 4500,
+        },
+      );
+    };
+
+    window.addEventListener("chat-toast", handler);
+    return () => window.removeEventListener("chat-toast", handler);
+  }, []);
 
   if (isLoading) return <PageLoader />;
 
@@ -208,7 +273,7 @@ const App = () => {
               }
             />
           }
-        />      
+        />
 
         <Route
           path="/my-posts"

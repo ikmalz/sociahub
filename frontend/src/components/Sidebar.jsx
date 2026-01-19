@@ -21,7 +21,8 @@ const Sidebar = ({ onClose }) => {
   const { authUser } = useAuthUser();
   const location = useLocation();
   const currentPath = location.pathname;
-  const notificationCount = useNotificationCount();
+  const notificationCount = Number(useNotificationCount() || 0);
+
   const sidebarRef = useRef(null);
 
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -29,10 +30,9 @@ const Sidebar = ({ onClose }) => {
 
   const isAdminPage = currentPath.startsWith("/admin");
 
-  // Detect mobile and manage scroll
   useEffect(() => {
     const checkMobile = () => {
-      const mobile = window.innerWidth < 768; // md breakpoint
+      const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
       if (mobile) {
         setIsCollapsed(false);
@@ -41,15 +41,14 @@ const Sidebar = ({ onClose }) => {
 
     checkMobile();
     window.addEventListener("resize", checkMobile);
-    
-    // Make sidebar scrollable independently
+
     if (sidebarRef.current && !isMobile) {
-      sidebarRef.current.style.overflowY = 'auto';
-      sidebarRef.current.style.height = '100vh';
-      sidebarRef.current.style.position = 'sticky';
-      sidebarRef.current.style.top = '0';
+      sidebarRef.current.style.overflowY = "auto";
+      sidebarRef.current.style.height = "100vh";
+      sidebarRef.current.style.position = "sticky";
+      sidebarRef.current.style.top = "0";
     }
-    
+
     return () => {
       window.removeEventListener("resize", checkMobile);
     };
@@ -57,7 +56,7 @@ const Sidebar = ({ onClose }) => {
 
   const toggleSidebar = () => {
     if (isMobile) {
-      onClose?.(); 
+      onClose?.();
     } else {
       setIsCollapsed(!isCollapsed);
     }
@@ -85,9 +84,9 @@ const Sidebar = ({ onClose }) => {
           ${!isMobile ? "sticky top-0" : ""}
         `}
         style={{
-          overflowY: 'auto',
-          scrollbarWidth: 'thin',
-          msOverflowStyle: 'none',
+          overflowY: "auto",
+          scrollbarWidth: "thin",
+          msOverflowStyle: "none",
         }}
       >
         {/* Style scrollbar */}
@@ -167,9 +166,7 @@ const Sidebar = ({ onClose }) => {
             >
               <HomeIcon className="size-5 opacity-70 flex-shrink-0" />
               {(!isCollapsed || isMobile) && (
-                <span className="transition-all duration-200">
-                  Home
-                </span>
+                <span className="transition-all duration-200">Home</span>
               )}
             </div>
           </Link>
@@ -194,9 +191,7 @@ const Sidebar = ({ onClose }) => {
             >
               <UserIcon className="size-5 opacity-70 flex-shrink-0" />
               {(!isCollapsed || isMobile) && (
-                <span className="transition-all duration-200">
-                  Friends
-                </span>
+                <span className="transition-all duration-200">Friends</span>
               )}
             </div>
           </Link>
@@ -221,9 +216,7 @@ const Sidebar = ({ onClose }) => {
             >
               <FileTextIcon className="size-5 opacity-70 flex-shrink-0" />
               {(!isCollapsed || isMobile) && (
-                <span className="transition-all duration-200">
-                  My Posts
-                </span>
+                <span className="transition-all duration-200">My Posts</span>
               )}
             </div>
           </Link>
@@ -248,9 +241,7 @@ const Sidebar = ({ onClose }) => {
             >
               <ListIcon className="size-5 opacity-70 flex-shrink-0" />
               {(!isCollapsed || isMobile) && (
-                <span className="transition-all duration-200">
-                  View All
-                </span>
+                <span className="transition-all duration-200">View All</span>
               )}
             </div>
           </Link>
@@ -270,7 +261,9 @@ const Sidebar = ({ onClose }) => {
           >
             <div
               className={`flex items-center ${
-                isCollapsed && !isMobile ? "justify-center w-full relative" : "gap-3"
+                isCollapsed && !isMobile
+                  ? "justify-center w-full relative"
+                  : "gap-3"
               }`}
             >
               <div className="relative">
@@ -286,11 +279,6 @@ const Sidebar = ({ onClose }) => {
                   <span className="transition-all duration-200">
                     Notifications
                   </span>
-                  {notificationCount > 0 && (
-                    <span className="badge badge-error badge-xs">
-                      {notificationCount > 9 ? "9+" : notificationCount}
-                    </span>
-                  )}
                 </div>
               )}
             </div>
@@ -314,11 +302,7 @@ const Sidebar = ({ onClose }) => {
                   flex items-center w-full gap-3 px-3 py-3 rounded-lg
                   transition-all duration-200
                   hover:bg-base-300 active:scale-[0.98]
-                  ${
-                    currentPath.startsWith("/admin/users")
-                      ? "bg-base-300"
-                      : ""
-                  }
+                  ${currentPath.startsWith("/admin/users") ? "bg-base-300" : ""}
                   ${isCollapsed && !isMobile ? "justify-center px-0" : ""}
                 `}
               >
@@ -435,9 +419,7 @@ const Sidebar = ({ onClose }) => {
                       isAdminPage ? "bg-error" : "bg-success"
                     }`}
                   />
-                  <span
-                    className={isAdminPage ? "text-error" : "text-success"}
-                  >
+                  <span className={isAdminPage ? "text-error" : "text-success"}>
                     {isAdminPage ? "Admin" : "Online"}
                   </span>
                 </p>
@@ -470,8 +452,8 @@ const Sidebar = ({ onClose }) => {
             hidden md:flex
           `}
           style={{
-            transition: 'left 0.3s ease-in-out',
-            marginLeft: '1px' 
+            transition: "left 0.3s ease-in-out",
+            marginLeft: "1px",
           }}
         >
           {isCollapsed ? (
