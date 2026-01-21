@@ -1,12 +1,13 @@
 import express from "express";
 import {
+  checkApprovalStatus,
   completeOnboarding,
   login,
   logout,
   signup,
   updateProfile,
 } from "../controllers/auth.controller.js";
-import { protectRoute } from "../middleware/auth.middleware.js"; // Hapus requireActive
+import { protectRoute } from "../middleware/auth.middleware.js"; 
 
 const router = express.Router();
 
@@ -15,7 +16,7 @@ router.post("/login", login);
 router.post("/logout", logout);
 router.post("/onboarding", protectRoute, completeOnboarding);
 router.put("/update-profile", protectRoute, updateProfile);
-
+router.get("/check-approval", checkApprovalStatus);
 router.get("/me", protectRoute, (req, res) => {
   res.status(200).json({ success: true, user: req.user });
 });

@@ -545,6 +545,25 @@ export const updateProjectStatus = async (projectId, status) => {
     throw error;
   }
 };
+
+export const checkApprovalStatus = async (email) => {
+  try {
+    const res = await axiosInstance.get(
+      `/auth/check-approval`,
+      { params: { email } }
+    );
+
+    return res.data;
+  } catch (error) {
+    console.error("❌ Error checking approval status:", {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+    throw error;
+  }
+};
+
 // HAPUS YANG INI KARENA SUDAH ADA DI ATAS
 // export const getPostById = async (postId) => {
 //   const response = await fetch(`${API_BASE}/api/posts/${postId}`, {

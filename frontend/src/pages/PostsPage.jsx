@@ -6,9 +6,16 @@ import { MessageSquare, Search } from "lucide-react";
 import { useState } from "react";
 
 const PostsPage = () => {
-  const { data: posts = [], isLoading, isFetching } = useQuery({
+  const {
+    data: posts = [],
+    isLoading,
+    isFetching,
+  } = useQuery({
     queryKey: ["posts"],
     queryFn: getPosts,
+    refetchOnWindowFocus: false,
+    staleTime: 1000 * 60,
+    cacheTime: 1000 * 60 * 5,
   });
 
   const [query, setQuery] = useState("");
@@ -17,7 +24,10 @@ const PostsPage = () => {
   const isLoadingData = isLoading || isFetching;
 
   const filteredPosts = posts.filter((p) =>
-    p.content?.toLowerCase().includes(query.toLowerCase())
+    p.content?.toLowerCase().includes(query.toLowerCase()),
+  );
+  const sortedPosts = [...filteredPosts].sort(
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
   );
 
   return (
@@ -80,16 +90,9 @@ const PostsPage = () => {
               gap-5
             "
           >
-            {filteredPosts
-              .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-              .map((post) => (
-                <PostCard
-                  key={post._id}
-                  post={post}
-                  compact
-                  showVideo={false}
-                />
-              ))}
+            {sortedPosts.map((post) => (
+              <PostCard key={post._id} post={post} compact showVideo={false} />
+            ))}
           </div>
         )}
       </div>

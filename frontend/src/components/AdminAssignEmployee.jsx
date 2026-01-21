@@ -12,7 +12,7 @@ import {
   XCircle,
   Loader2,
   UserCheck,
-  Shield
+  Shield,
 } from "lucide-react";
 
 const AdminAssignEmployee = () => {
@@ -47,6 +47,11 @@ const AdminAssignEmployee = () => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    setSelectedEmployees([]);
+    setSearchEmployee("");
+  }, [selectedClient]);
+
   const handleAssign = async () => {
     if (!selectedClient) {
       toast.error("Please select a client first");
@@ -64,15 +69,26 @@ const AdminAssignEmployee = () => {
         clientId: selectedClient,
         employeeIds: selectedEmployees,
       });
-      
+
       toast.success(
         <div className="flex items-center gap-2">
           <UserCheck className="size-5" />
-          <span>Successfully assigned {selectedEmployees.length} employee(s) to client</span>
-        </div>
+          <span>
+            Successfully assigned {selectedEmployees.length} employee(s) to
+            client
+          </span>
+        </div>,
       );
-      
+
       setSelectedEmployees([]);
+
+      const [clientsData, employeesData] = await Promise.all([
+        getClients(),
+        getEmployees(),
+      ]);
+
+      setClients(clientsData || []);
+      setEmployees(employeesData || []);
     } catch (error) {
       console.error("Error assigning employees:", error);
       toast.error("Failed to assign employees");
@@ -82,27 +98,43 @@ const AdminAssignEmployee = () => {
   };
 
   const handleEmployeeToggle = (employeeId) => {
-    setSelectedEmployees(prev => 
+    setSelectedEmployees((prev) =>
       prev.includes(employeeId)
-        ? prev.filter(id => id !== employeeId)
-        : [...prev, employeeId]
+        ? prev.filter((id) => id !== employeeId)
+        : [...prev, employeeId],
     );
   };
 
   const getSelectedClient = () => {
-    return clients.find(c => c._id === selectedClient);
+    return clients.find((c) => c._id === selectedClient);
   };
 
-  const filteredEmployees = employees.filter(emp =>
-    emp.fullName?.toLowerCase().includes(searchEmployee.toLowerCase()) ||
-    emp.email?.toLowerCase().includes(searchEmployee.toLowerCase()) ||
-    emp.skills?.some(skill => skill.toLowerCase().includes(searchEmployee.toLowerCase()))
-  );
+  const isEmployeeAssignedToClient = (emp, clientId) => {
+    if (!clientId) return false;
+    return emp.assignedClients?.includes(clientId);
+  };
 
-  const filteredClients = clients.filter(client =>
-    client.fullName?.toLowerCase().includes(searchClient.toLowerCase()) ||
-    client.email?.toLowerCase().includes(searchClient.toLowerCase()) ||
-    client.institutionName?.toLowerCase().includes(searchClient.toLowerCase())
+  const filteredEmployees = employees.filter((emp) => {
+    if (selectedClient && isEmployeeAssignedToClient(emp, selectedClient)) {
+      return false;
+    }
+
+    const keyword = searchEmployee.toLowerCase();
+
+    return (
+      emp.fullName?.toLowerCase().includes(keyword) ||
+      emp.email?.toLowerCase().includes(keyword) ||
+      emp.skills?.some((skill) => skill.toLowerCase().includes(keyword))
+    );
+  });
+
+  const filteredClients = clients.filter(
+    (client) =>
+      client.fullName?.toLowerCase().includes(searchClient.toLowerCase()) ||
+      client.email?.toLowerCase().includes(searchClient.toLowerCase()) ||
+      client.institutionName
+        ?.toLowerCase()
+        .includes(searchClient.toLowerCase()),
   );
 
   if (loading) {
@@ -141,7 +173,9 @@ const AdminAssignEmployee = () => {
               <div className="card-body p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-base-content/70 mb-1">Total Clients</p>
+                    <p className="text-sm text-base-content/70 mb-1">
+                      Total Clients
+                    </p>
                     <p className="text-2xl font-bold">{clients.length}</p>
                   </div>
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -155,7 +189,9 @@ const AdminAssignEmployee = () => {
               <div className="card-body p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-base-content/70 mb-1">Available Employees</p>
+                    <p className="text-sm text-base-content/70 mb-1">
+                      Available Employees
+                    </p>
                     <p className="text-2xl font-bold">{employees.length}</p>
                   </div>
                   <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
@@ -169,8 +205,12 @@ const AdminAssignEmployee = () => {
               <div className="card-body p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-base-content/70 mb-1">Selected for Assignment</p>
-                    <p className="text-2xl font-bold">{selectedEmployees.length}</p>
+                    <p className="text-sm text-base-content/70 mb-1">
+                      Selected for Assignment
+                    </p>
+                    <p className="text-2xl font-bold">
+                      {selectedEmployees.length}
+                    </p>
                   </div>
                   <div className="w-10 h-10 rounded-lg bg-warning/10 flex items-center justify-center">
                     <UserCheck className="size-5 text-warning" />
@@ -187,8 +227,7 @@ const AdminAssignEmployee = () => {
           <div className="lg:col-span-1">
             <div className="card bg-base-100 border border-base-300 shadow-sm sticky top-6">
               <div className="card-body p-5">
-                <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <Building className="size-5 text-primary" />
+                <h2 className="text-sm font-semibold mb-3 uppercase tracking-wide text-base-content/60">
                   Select Client
                 </h2>
 
@@ -217,12 +256,17 @@ const AdminAssignEmployee = () => {
                     filteredClients.map((client) => (
                       <div
                         key={client._id}
-                        className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                        className={`p-3 rounded-xl bg-base-200 hover:bg-base-300 transition-all duration-200 flex items-center gap-3 border ${
                           selectedClient === client._id
-                            ? "border-primary bg-primary/5"
-                            : "border-base-300 hover:border-primary/30"
+                            ? "border-primary bg-primary/5 shadow-sm"
+                            : "border-base-300"
                         }`}
-                        onClick={() => setSelectedClient(client._id)}
+                        onClick={() => {
+                          setSelectedEmployees([]);
+                          setSelectedClient((prev) =>
+                            prev === client._id ? "" : client._id,
+                          );
+                        }}
                       >
                         <div className="flex items-center gap-3">
                           <div className="avatar">
@@ -233,12 +277,16 @@ const AdminAssignEmployee = () => {
                           <div className="flex-1">
                             <p className="font-medium">{client.fullName}</p>
                             {client.institutionName && (
-                              <p className="text-sm opacity-70">{client.institutionName}</p>
+                              <p className="text-sm opacity-70">
+                                {client.institutionName}
+                              </p>
                             )}
                             <p className="text-xs opacity-50">{client.email}</p>
                           </div>
                           {selectedClient === client._id && (
-                            <CheckCircle className="size-5 text-success" />
+                            <span className="badge badge-outline badge-primary badge-sm ml-auto">
+                              Selected
+                            </span>
                           )}
                         </div>
                       </div>
@@ -248,25 +296,28 @@ const AdminAssignEmployee = () => {
 
                 {/* Selected Client Preview */}
                 {selectedClient && (
-                  <div className="mt-6 pt-6 border-t border-base-300">
-                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                      <Shield className="size-4" />
-                      Selected Client
-                    </h3>
-                    <div className="bg-base-200 p-3 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Building className="size-6 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-bold">{getSelectedClient()?.fullName}</p>
-                          {getSelectedClient()?.institutionName && (
-                            <p className="text-sm opacity-70">{getSelectedClient()?.institutionName}</p>
-                          )}
-                          <p className="text-xs opacity-50">Ready for employee assignment</p>
-                        </div>
+                  <div className="mt-4 flex items-center justify-between rounded-xl px-4 py-3 border border-primary/30 bg-primary/5 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Building className="size-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm">
+                          {getSelectedClient()?.fullName}
+                        </p>
+                        <p className="text-xs opacity-60">
+                          {getSelectedClient()?.institutionName ||
+                            "Client selected"}
+                        </p>
                       </div>
                     </div>
+
+                    <button
+                      className="btn btn-xs btn-ghost text-error"
+                      onClick={() => setSelectedClient("")}
+                    >
+                      Clear
+                    </button>
                   </div>
                 )}
               </div>
@@ -313,6 +364,27 @@ const AdminAssignEmployee = () => {
                   </div>
                 </div>
 
+                {selectedClient && (
+                  <div className="mb-4 p-4 bg-base-200 rounded-xl">
+                    <h3 className="font-semibold mb-2 flex items-center gap-2">
+                      <UserCheck className="size-4 text-success" />
+                      Already Assigned
+                    </h3>
+
+                    <div className="flex flex-wrap gap-2">
+                      {employees
+                        .filter((emp) =>
+                          emp.assignedClients?.includes(selectedClient),
+                        )
+                        .map((emp) => (
+                          <span key={emp._id} className="badge badge-success">
+                            {emp.fullName}
+                          </span>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Employee List */}
                 <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
                   {filteredEmployees.length === 0 ? (
@@ -320,36 +392,47 @@ const AdminAssignEmployee = () => {
                       <div className="w-16 h-16 mx-auto mb-4 bg-base-200 rounded-full flex items-center justify-center">
                         <Users className="size-8 opacity-40" />
                       </div>
-                      <h3 className="text-lg font-semibold mb-2">No Employees Found</h3>
+                      <h3 className="text-lg font-semibold mb-2">
+                        No Employees Found
+                      </h3>
                       <p className="text-base-content/70">
-                        Try adjusting your search or check if employees are available
+                        Try adjusting your search or check if employees are
+                        available
                       </p>
                     </div>
                   ) : (
                     filteredEmployees.map((emp) => {
                       const isSelected = selectedEmployees.includes(emp._id);
-                      
+
+                      const alreadyAssigned =
+                        selectedClient &&
+                        emp.assignedClients?.includes(selectedClient);
+
                       return (
                         <div
                           key={emp._id}
-                          className={`p-4 rounded-xl border transition-all cursor-pointer ${
+                          className={`p-3 rounded-xl transition-all duration-200 border bg-base-200 hover:bg-base-300 ${
                             isSelected
-                              ? "border-primary bg-primary/5"
-                              : "border-base-300 hover:border-primary/30"
-                          }`}
-                          onClick={() => handleEmployeeToggle(emp._id)}
+                              ? "border-primary bg-primary/5 shadow-sm"
+                              : "border-base-300"
+                          } ${alreadyAssigned ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                          onClick={() => {
+                            if (!alreadyAssigned) handleEmployeeToggle(emp._id);
+                          }}
                         >
+                          {alreadyAssigned && (
+                            <span className="badge badge-success badge-sm ml-2">
+                              Assigned
+                            </span>
+                          )}
                           <div className="flex items-center gap-4">
                             {/* Checkbox */}
-                            <div className={`w-6 h-6 rounded border-2 flex items-center justify-center ${
-                              isSelected
-                                ? "border-primary bg-primary"
-                                : "border-base-300"
-                            }`}>
-                              {isSelected && (
-                                <CheckCircle className="size-4 text-base-100" />
-                              )}
-                            </div>
+                            <input
+                              type="checkbox"
+                              className="checkbox checkbox-sm checkbox-primary"
+                              checked={isSelected}
+                              readOnly
+                            />
 
                             {/* Avatar */}
                             <div className="avatar">
@@ -364,8 +447,12 @@ const AdminAssignEmployee = () => {
                             <div className="flex-1">
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                 <div>
-                                  <h4 className="font-semibold">{emp.fullName}</h4>
-                                  <p className="text-sm opacity-70">{emp.email}</p>
+                                  <h4 className="font-semibold">
+                                    {emp.fullName}
+                                  </h4>
+                                  <p className="text-sm opacity-70">
+                                    {emp.email}
+                                  </p>
                                 </div>
                                 <div className="flex flex-wrap gap-1">
                                   {emp.skills?.slice(0, 3).map((skill, idx) => (
@@ -387,7 +474,9 @@ const AdminAssignEmployee = () => {
                               {/* Expertise */}
                               {emp.expertise && (
                                 <div className="mt-2">
-                                  <p className="text-xs opacity-70">Expertise:</p>
+                                  <p className="text-xs opacity-70">
+                                    Expertise:
+                                  </p>
                                   <p className="text-sm">{emp.expertise}</p>
                                 </div>
                               )}
@@ -407,7 +496,9 @@ const AdminAssignEmployee = () => {
                         <div className="flex items-center gap-2 text-sm">
                           <CheckCircle className="size-4 text-success" />
                           <span>
-                            Ready to assign <strong>{selectedEmployees.length}</strong> employee(s)
+                            Ready to assign{" "}
+                            <strong>{selectedEmployees.length}</strong>{" "}
+                            employee(s)
                           </span>
                         </div>
                       ) : (
@@ -417,11 +508,15 @@ const AdminAssignEmployee = () => {
                         </div>
                       )}
                     </div>
-                    
+
                     <button
-                      className={`btn btn-primary gap-2 ${assigning ? "loading" : ""}`}
+                      className={`btn btn-primary btn-wide ${assigning ? "loading" : ""}`}
                       onClick={handleAssign}
-                      disabled={!selectedClient || selectedEmployees.length === 0 || assigning}
+                      disabled={
+                        !selectedClient ||
+                        selectedEmployees.length === 0 ||
+                        assigning
+                      }
                     >
                       {assigning ? (
                         <>

@@ -90,6 +90,7 @@ const HomePage = () => {
   const [expandedProjects, setExpandedProjects] = useState({});
   const [activeTab, setActiveTab] = useState(isClient ? "projects" : "feed");
   const [postFormType, setPostFormType] = useState("text");
+  const [localOutgoingIds, setLocalOutgoingIds] = useState(new Set());
 
   // Queries
   const { data: friends = [], isLoading: loadingFriends } = useQuery({
@@ -135,9 +136,23 @@ const HomePage = () => {
 
   const { mutate: sendRequestMutation, isPending } = useMutation({
     mutationFn: sendFriendRequest,
+
+    onMutate: async (userId) => {
+      setLocalOutgoingIds((prev) => new Set(prev).add(userId));
+    },
+
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["outgoingFriendsReqs"] });
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["outgoingFriendReqs"] });
+      queryClient.invalidateQueries({ queryKey: ["friends"] });
+      queryClient.invalidateQueries({ queryKey: ["recommended-users"] });
+    },
+
+    onError: (err, userId) => {
+      setLocalOutgoingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(userId);
+        return next;
+      });
     },
   });
 
@@ -148,13 +163,13 @@ const HomePage = () => {
       enabled: isClient,
     });
 
-  // Effects
   useEffect(() => {
     const outgoingIds = new Set();
     if (outgoingFriendsReqs?.length > 0) {
       outgoingFriendsReqs.forEach((req) => outgoingIds.add(req.recipient._id));
-      setOutgoingRequestsIds(outgoingIds);
     }
+    setOutgoingRequestsIds(outgoingIds);
+    setLocalOutgoingIds(outgoingIds);
   }, [outgoingFriendsReqs]);
 
   // Handlers
@@ -195,7 +210,17 @@ const HomePage = () => {
     const isAllowedRole = allowedRoles.includes(user.role);
     const isNotCurrentUser = user._id !== authUser?._id;
     const isActive = user.isActive !== false;
-    return isAllowedRole && isNotCurrentUser && isActive;
+
+    const isAlreadyFriend = friends.some((f) => f._id === user._id);
+    const hasPendingRequest = outgoingRequestsIds.has(user._id);
+
+    return (
+      isAllowedRole &&
+      isNotCurrentUser &&
+      isActive &&
+      !isAlreadyFriend &&
+      !hasPendingRequest
+    );
   });
 
   const shuffledRecommendedUsers = filteredRecommendedUsers
@@ -305,8 +330,8 @@ const HomePage = () => {
                 isCompleted
                   ? "badge-success"
                   : project.status === "active"
-                  ? "badge-warning"
-                  : "badge-info"
+                    ? "badge-warning"
+                    : "badge-info"
               }`}
             >
               {project.status}
@@ -519,7 +544,7 @@ const HomePage = () => {
 
   const QuickStats = () => {
     const completedProjects = projects.filter(
-      (p) => p.status === "completed"
+      (p) => p.status === "completed",
     ).length;
     const activeProjects = projects.filter((p) => p.status === "active").length;
 
@@ -941,9 +966,10 @@ const HomePage = () => {
                 ) : (
                   <div className="space-y-3">
                     {shuffledRecommendedUsers.map((user) => {
-                      const hasRequestBeenSent = outgoingRequestsIds.has(
-                        user._id
-                      );
+                      const hasRequestBeenSent =
+                        localOutgoingIds.has(user._id) ||
+                        outgoingRequestsIds.has(user._id);
+
                       return (
                         <div
                           key={user._id}
@@ -967,7 +993,7 @@ const HomePage = () => {
                           <button
                             className={`btn btn-xs ${
                               hasRequestBeenSent
-                                ? "btn-disabled opacity-50"
+                                ? "btn-disabled opacity-60"
                                 : "btn-outline btn-primary"
                             }`}
                             onClick={() => sendRequestMutation(user._id)}

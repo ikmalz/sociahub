@@ -89,23 +89,27 @@ export const rejectUser = async (req, res) => {
       });
     }
 
-    user.approvalStatus = "rejected";
-    user.isActive = false;
+    try {
+      await upsertStreamUser({
+        id: user._id.toString(),
+        delete: true, 
+      });
+    } catch (err) {
+      console.log("⚠️ Stream delete skipped:", err.message);
+    }
 
-    await user.save();
-
-    const safeUser = user.toObject();
-    delete safeUser.password;
+    await User.findByIdAndDelete(userId);
 
     res.status(200).json({
       success: true,
-      message: "User rejected successfully",
-      user: safeUser,
+      message: "User rejected and permanently deleted",
     });
   } catch (error) {
+    console.error("Reject user error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
+
 
 export const assignEmployeeToClient = async (req, res) => {
   try {
@@ -172,7 +176,7 @@ export const getEmployees = async (req, res) => {
       role: "employee",
       isActive: true,
       approvalStatus: "approved",
-    }).select("fullName email skills expertise");
+    }).select("fullName email skills expertise assignedClients");
 
     res.status(200).json({
       success: true,

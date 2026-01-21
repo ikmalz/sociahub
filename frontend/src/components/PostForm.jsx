@@ -436,7 +436,7 @@ const PostForm = ({
                 className="btn btn-ghost btn-sm"
                 disabled={isPending}
               >
-                Batal
+                Cancel
               </button>
             )}
 
@@ -448,10 +448,10 @@ const PostForm = ({
               {isPending ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="animate-spin" size={14} />
-                  <span className="text-xs">Memperbarui...</span>
+                  <span className="text-xs">Updating...</span>
                 </span>
               ) : (
-                "Perbarui"
+                "Post"
               )}
             </button>
           </div>
@@ -465,7 +465,7 @@ const PostForm = ({
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-lg flex items-center gap-2">
                 <MapPin className="size-5" />
-                Tambahkan Lokasi
+                Add Location
               </h3>
               <button
                 onClick={() => {

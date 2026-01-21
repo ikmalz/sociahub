@@ -59,11 +59,11 @@ const PostCard = ({
   const postUserId = normalizeId(post.user?._id);
 
   const isOwner = Boolean(
-    currentUserId && postUserId && currentUserId === postUserId
+    currentUserId && postUserId && currentUserId === postUserId,
   );
 
   const isPostOwner = Boolean(
-    currentUserId && postUserId && currentUserId === postUserId
+    currentUserId && postUserId && currentUserId === postUserId,
   );
 
   // const isAdmin = currentUser?.role === "admin";
@@ -138,9 +138,55 @@ const PostCard = ({
     setMediaError(true);
   };
 
-  const { mutate: likeMutation } = useMutation({
+  const { mutate: likeMutation, isPending: liking } = useMutation({
     mutationFn: () => likePost(post._id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["posts"] }),
+
+    onMutate: async () => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: ["posts"] }),
+        queryClient.cancelQueries({ queryKey: ["myPosts"] }),
+      ]);
+
+      const previousPosts = queryClient.getQueryData(["posts"]);
+      const previousMyPosts = queryClient.getQueryData(["myPosts"]);
+
+      const toggleLike = (oldPosts = []) =>
+        oldPosts.map((p) =>
+          p._id === post._id
+            ? {
+                ...p,
+                likes: p.likes?.includes(currentUserId)
+                  ? p.likes.filter((id) => id !== currentUserId)
+                  : [...(p.likes || []), currentUserId],
+              }
+            : p,
+        );
+
+      queryClient.setQueryData(["posts"], toggleLike);
+      queryClient.setQueryData(["myPosts"], toggleLike);
+
+      return { previousPosts, previousMyPosts };
+    },
+
+    onError: (err, _, context) => {
+      if (context?.previousPosts) {
+        queryClient.setQueryData(["posts"], context.previousPosts);
+      }
+      if (context?.previousMyPosts) {
+        queryClient.setQueryData(["myPosts"], context.previousMyPosts);
+      }
+    },
+
+    onSuccess: () => {
+      queryClient.refetchQueries({
+        queryKey: ["posts"],
+        type: "inactive",
+      });
+      queryClient.refetchQueries({
+        queryKey: ["myPosts"],
+        type: "inactive",
+      });
+    },
   });
 
   const { mutate: deleteMutation, isPending: isDeleting } = useMutation({
@@ -176,7 +222,6 @@ const PostCard = ({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
 
   useEffect(() => {
     if (!videoRef.current) return;
@@ -451,9 +496,9 @@ const PostCard = ({
 
                   {/* SOUND BUTTON */}
                   {mediaType === "video" && (
-                   <button
-  onClick={toggleSound}
-  className="
+                    <button
+                      onClick={toggleSound}
+                      className="
     absolute top-3 right-3 
     bg-black/60 backdrop-blur 
     p-2 rounded-full 
@@ -461,10 +506,9 @@ const PostCard = ({
     hover:bg-black/80 
     transition
   "
->
-  {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-</button>
-
+                    >
+                      {muted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                    </button>
                   )}
 
                   {/* HEADER */}
@@ -1009,14 +1053,15 @@ const PostCard = ({
               <div className="flex items-center gap-5">
                 <button
                   onClick={() => likeMutation()}
+                  disabled={liking}
                   className="flex items-center gap-1 btn btn-ghost btn-xs"
                 >
                   <Heart
-                    className={`size-4 ${
+                    className={`size-4 transition ${
                       post.likes?.includes(currentUserId)
                         ? "fill-error text-error"
-                        : ""
-                    }`}
+                        : "text-base-content"
+                    } ${liking ? "animate-pulse" : ""}`}
                   />
                   <span className="text-xs">{likeCount}</span>
                 </button>

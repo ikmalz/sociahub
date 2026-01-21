@@ -88,16 +88,35 @@ const ChatPage = () => {
   }, [channel, targetUserId]);
 
   const handleVideoCall = () => {
-    if (channel) {
-      const callUrl = `${window.location.origin}/call/${channel.id}`;
+    if (!channel) return;
 
-      channel.sendMessage({
-        text: `I've started a video call. Join me here: ${callUrl}`,
-      });
+    const callUrl = `${window.location.origin}/call/${channel.id}`;
 
-      toast.success("Video call link sent successfully!");
+    if (!window.videoCallTab || window.videoCallTab.closed) {
+      window.videoCallTab = window.open(callUrl, "_blank");
+    } else {
+      window.videoCallTab.focus();
+      return;
     }
+
+    channel.sendMessage({
+      text: `I've started a video call. Join me here: ${callUrl}`,
+    });
+
+    toast.success("Video call started!");
   };
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.data?.type === "CALL_ENDED") {
+        window.focus();
+        toast("Call ended", { icon: "📞" });
+      }
+    };
+
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, []);
 
   if (loading || !chatClient || !channel) return <ChatLoader />;
 
