@@ -25,13 +25,12 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://sociahub.vercel.app",
-      /\.ngrok-free\.app$/,
+      "https://frontend-mu-three-17.vercel.app",
     ],
     credentials: true,
   })
 );
-
+app.options("*", cors());
 app.use(express.json());
 app.use(cookieParser());
 
