@@ -203,7 +203,6 @@ export const completeOnboarding = async (req, res) => {
       isOnBoarded: true,
     };
 
-    // Tambahkan field berdasarkan role
     if (user.role === "client") {
       updateData.institutionName = institutionName;
       updateData.institutionType = institutionType || "";
@@ -228,7 +227,6 @@ export const completeOnboarding = async (req, res) => {
       { new: true, runValidators: true }
     ).select("-password");
 
-    // Update Stream user
     try {
       await upsertStreamUser({
         id: updatedUser._id.toString(),
